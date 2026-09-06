@@ -1,0 +1,272 @@
+package kit.penny.clientbus.connector.telegram.client.updates;
+
+import kit.penny.clientbus.connector.telegram.client.QueryResultHandler;
+import kit.penny.clientbus.connector.telegram.client.TelegramClient;
+import kit.penny.clientbus.connector.telegram.exception.TelegramClientConfigurationException;
+import kit.penny.clientbus.connector.telegram.properties.TelegramProperties;
+import org.drinkless.tdlib.TdApi;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+import static kit.penny.clientbus.connector.telegram.client.updates.AuthorizationStateCache.*;
+import static org.springframework.util.StringUtils.hasText;
+
+/**
+ * Handler of {@link TdApi.AuthorizationState} updates.
+ */
+public class UpdateAuthorizationState implements UpdateNotificationListener<TdApi.UpdateAuthorizationState> {
+
+    private final Logger log = LoggerFactory.getLogger(UpdateAuthorizationState.class);
+
+    private TdApi.AuthorizationState authorizationState;
+
+    private final TelegramProperties properties;
+
+    private final TelegramClient telegramClient;
+
+    private final AuthorizationRequestHandler authorizationRequestHandler;
+
+    public UpdateAuthorizationState(TelegramProperties properties,
+                                    TelegramClient telegramClient) {
+        this.properties = properties;
+        this.telegramClient = telegramClient;
+        this.authorizationRequestHandler = new AuthorizationRequestHandler();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void handleNotification(TdApi.UpdateAuthorizationState notification) {
+        Optional.ofNullable(notification).ifPresent(this::processNotification);
+    }
+
+    private void processNotification(TdApi.UpdateAuthorizationState notification) {
+        TdApi.AuthorizationState newAuthorizationState = notification.authorizationState;
+        if (newAuthorizationState != null) {
+            this.authorizationState = newAuthorizationState;
+        }
+        switch (this.authorizationState.getConstructor()) {
+            case TdApi.AuthorizationStateWaitTdlibParameters.CONSTRUCTOR -> setTdlibParameters();
+            case TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR -> sendAuthenticationPhoneNumber();
+            case TdApi.AuthorizationStateWaitOtherDeviceConfirmation.CONSTRUCTOR -> logOtherDeviceConfirmationLink();
+            case TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> waitAndSendAuthenticationCode();
+            case TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> waitAndSendAuthenticationPassword();
+            case TdApi.AuthorizationStateWaitEmailAddress.CONSTRUCTOR -> waitAndSendAuthenticationEmailAddress();
+            case TdApi.AuthorizationStateWaitEmailCode.CONSTRUCTOR -> waitAndSendAuthenticationEmailCode();
+            case TdApi.AuthorizationStateReady.CONSTRUCTOR -> haveAuthorization.set(true);
+            case TdApi.AuthorizationStateLoggingOut.CONSTRUCTOR -> resetAuthorization("Logging out");
+            case TdApi.AuthorizationStateClosing.CONSTRUCTOR -> resetAuthorization("Closing");
+            case TdApi.AuthorizationStateClosed.CONSTRUCTOR -> closeState();
+            default -> log.error("Unsupported authorization state:\n{}", this.authorizationState);
+        }
+    }
+
+    private void setTdlibParameters() {
+        TdApi.SetTdlibParameters tdLibParameters = tdLibParameters();
+        log.info("TDLib version: {}", tdLibParameters.applicationVersion);
+        telegramClient.sendWithCallback(tdLibParameters, authorizationRequestHandler);
+        TelegramProperties.Proxy proxy = properties.proxy();
+        if (proxy != null) {
+            addProxy(proxy);
+        }
+    }
+
+    private void sendAuthenticationPhoneNumber() {
+        var setAuthenticationPhoneNumber = new TdApi.SetAuthenticationPhoneNumber(properties.phone(), null);
+        telegramClient.sendWithCallback(setAuthenticationPhoneNumber, authorizationRequestHandler);
+    }
+
+    private void logOtherDeviceConfirmationLink() {
+        String link = ((TdApi.AuthorizationStateWaitOtherDeviceConfirmation) this.authorizationState).link;
+        log.info("Please confirm this login link on another device: {}", link);
+    }
+
+    private void waitAndSendAuthenticationCode() {
+        try {
+            if (!hasText(codeInputToCheck)) {
+                waitAuthenticationCode.set(true);
+                log.info("Please enter authentication code");
+                while (!hasText(codeInputToCheck)) {
+                    awaitInput();
+                }
+            }
+            var checkAuthenticationCode = new TdApi.CheckAuthenticationCode(codeInputToCheck);
+            telegramClient.sendWithCallback(checkAuthenticationCode, authorizationRequestHandler);
+        } finally {
+            codeInputToCheck = null;
+        }
+    }
+
+    private void waitAndSendAuthenticationPassword() {
+        try {
+            if (!hasText(passwordInputToCheck)) {
+                waitAuthenticationPassword.set(true);
+                log.info("Please enter password");
+                while (!hasText(passwordInputToCheck)) {
+                    awaitInput();
+                }
+            }
+            var checkAuthenticationPassword = new TdApi.CheckAuthenticationPassword(passwordInputToCheck);
+            telegramClient.sendWithCallback(checkAuthenticationPassword, authorizationRequestHandler);
+        } finally {
+            passwordInputToCheck = null;
+        }
+    }
+
+    private void waitAndSendAuthenticationEmailAddress() {
+        try {
+            if (!hasText(emailAddressInputToCheck)) {
+                waitEmailAddress.set(true);
+                log.info("Please enter email");
+                while (!hasText(emailAddressInputToCheck)) {
+                    awaitInput();
+                }
+            }
+            var setAuthenticationEmailAddress = new TdApi.SetAuthenticationEmailAddress(emailAddressInputToCheck);
+            telegramClient.sendWithCallback(setAuthenticationEmailAddress, authorizationRequestHandler);
+        } finally {
+            emailAddressInputToCheck = null;
+        }
+    }
+
+    private void waitAndSendAuthenticationEmailCode() {
+        try {
+            if (!hasText(codeInputToCheck)) {
+                waitAuthenticationCode.set(true);
+                log.info("Please enter authentication code from email");
+                while (!hasText(codeInputToCheck)) {
+                    awaitInput();
+                }
+            }
+            var emailAuth = new TdApi.EmailAddressAuthenticationCode(codeInputToCheck);
+            var checkAuthenticationEmailCode = new TdApi.CheckAuthenticationEmailCode(emailAuth);
+            telegramClient.sendWithCallback(checkAuthenticationEmailCode, authorizationRequestHandler);
+        } finally {
+            codeInputToCheck = null;
+        }
+    }
+
+    private void resetAuthorization(String logMessage) {
+        haveAuthorization.set(false);
+        log.info(logMessage);
+    }
+
+    private void closeState() {
+        stateClosed.set(true);
+        log.info("Closed");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Class<TdApi.UpdateAuthorizationState> notificationType() {
+        return TdApi.UpdateAuthorizationState.class;
+    }
+
+    private void awaitInput() {
+        try {
+            TimeUnit.SECONDS.sleep(3);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    /**
+     * Configure TDLib parameters.
+     * @return {@link TdApi.SetTdlibParameters}
+     */
+    private TdApi.SetTdlibParameters tdLibParameters() {
+        boolean useTestDc = properties.useTestDc();
+        String databaseDirectory = checkStringOrEmpty(properties.databaseDirectory());
+        String filesDirectory = checkStringOrEmpty(properties.filesDirectory());
+        byte[] databaseEncryptionKey = properties.databaseEncryptionKey().getBytes(StandardCharsets.UTF_8);
+        boolean useFileDatabase = properties.useFileDatabase();
+        boolean useChatInfoDatabase = properties.useChatInfoDatabase();
+        boolean useMessageDatabase = properties.useMessageDatabase();
+        boolean useSecretChats = properties.useSecretChats();
+        int apiId = properties.apiId();
+        String apiHash = properties.apiHash();
+        String systemLanguageCode = properties.systemLanguageCode();
+        String deviceModel = properties.deviceModel();
+        String systemVersion = checkStringOrEmpty(properties.systemVersion());
+        String applicationVersion = "1.8.66";
+        return new TdApi.SetTdlibParameters(
+                useTestDc,
+                databaseDirectory,
+                filesDirectory,
+                databaseEncryptionKey,
+                useFileDatabase,
+                useChatInfoDatabase,
+                useMessageDatabase,
+                useSecretChats,
+                apiId,
+                apiHash,
+                systemLanguageCode,
+                deviceModel,
+                systemVersion,
+                applicationVersion
+        );
+    }
+
+    /**
+     * Configure and sends proxy settings for TDLib.
+     * Proxies: http, socks5, mtProto
+     *
+     * @param proxyProperties proxy properties
+     */
+    private void addProxy(TelegramProperties.Proxy proxyProperties) {
+        TdApi.ProxyType proxyType = getProxyType(proxyProperties);
+        var proxy = new TdApi.Proxy(proxyProperties.server(), proxyProperties.port(), proxyType);
+        var proxyTypeName = proxyType.getClass().getSimpleName();
+        var addProxy = new TdApi.AddProxy(proxy, true, proxyTypeName);
+        telegramClient.sendWithCallback(addProxy, ((obj, error) -> {
+            if (error == null) {
+                log.info("Proxy server: [server: {}, port: {}, type: {}]", proxy.server, proxy.port, proxyTypeName);
+            }
+        }));
+    }
+
+    private static TdApi.ProxyType getProxyType(TelegramProperties.Proxy proxy) {
+        var http = proxy.http();
+        var socks5 = proxy.socks5();
+        var mtProto = proxy.mtproto();
+        TdApi.ProxyType proxyType;
+        if (http != null) {
+            proxyType = new TdApi.ProxyTypeHttp(http.username(), http.password(), http.httpOnly());
+        } else if (socks5 != null) {
+            proxyType = new TdApi.ProxyTypeSocks5(socks5.username(), socks5.password());
+        } else if (mtProto != null) {
+            proxyType = new TdApi.ProxyTypeMtproto(mtProto.secret());
+        } else {
+            throw new TelegramClientConfigurationException("ProxyType not filled. Available types - http, socks5, mtProto");
+        }
+        return proxyType;
+    }
+
+    private String checkStringOrEmpty(String s) {
+        return hasText(s) ? s : "";
+    }
+
+    private class AuthorizationRequestHandler implements QueryResultHandler<TdApi.Ok> {
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void onResult(TdApi.Ok obj, TdApi.Error error) {
+            if (error != null) {
+                log.error("Receive an error:\n{}", error);
+                handleNotification(null); // repeat last action
+            }
+            //result is already received through UpdateAuthorizationState, nothing to do
+        }
+    }
+
+}
