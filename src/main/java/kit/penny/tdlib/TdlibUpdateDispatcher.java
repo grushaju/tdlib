@@ -1,7 +1,8 @@
-package kit.penny.clientbus.connector.telegram.client;
+package kit.penny.tdlib;
 
-import kit.penny.clientbus.connector.telegram.client.updates.UpdateNotificationListener;
-import kit.penny.clientbus.connector.telegram.exception.TelegramClientTdApiException;
+import kit.penny.clientbus.connector.telegram.client.UpdateNotificationConsumer;
+import kit.penny.tdlib.updates.ITdlibUpdateListener;
+import kit.penny.tdlib.exception.TdlibException;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 
@@ -13,13 +14,13 @@ import java.util.function.Consumer;
 /**
  * The main handler for incoming updates from TDLib.
  */
-final class CoreUpdateHandler implements Client.ResultHandler {
+final class TdlibUpdateDispatcher implements Client.ResultHandler {
 
     private final Map<Integer, Consumer<TdApi.Object>> tdUpdateHandlers = new HashMap<>();
 
     private final Client.ResultHandler defaultHandler;
 
-    CoreUpdateHandler(Collection<UpdateNotificationListener<?>> notifications, Client.ResultHandler defaultHandler) {
+    TdlibUpdateDispatcher(Collection<ITdlibUpdateListener<?>> notifications, Client.ResultHandler defaultHandler) {
         this.defaultHandler = defaultHandler;
         notifications.forEach(ntf -> {
             var handler = new UpdateNotificationConsumer(ntf, ntf.notificationType());
@@ -27,12 +28,12 @@ final class CoreUpdateHandler implements Client.ResultHandler {
         });
     }
 
-    private int getConstructorNumberOfType(UpdateNotificationListener<?> updateNotification) {
+    private int getConstructorNumberOfType(ITdlibUpdateListener<?> updateNotification) {
         try {
             TdApi.Update tmp = updateNotification.notificationType().getConstructor().newInstance();
             return tmp.getConstructor();
         } catch (ReflectiveOperationException e) {
-            throw new TelegramClientTdApiException(e.getMessage());
+            throw new TdlibException(e.getMessage());
         }
     }
 

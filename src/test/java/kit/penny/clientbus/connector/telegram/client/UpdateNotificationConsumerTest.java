@@ -1,7 +1,7 @@
 package kit.penny.clientbus.connector.telegram.client;
 
-import kit.penny.clientbus.connector.telegram.client.UpdateNotificationConsumer;
-import kit.penny.clientbus.connector.telegram.client.updates.UpdateNotificationListener;
+import kit.penny.tdlib.updates.ITdlibUpdateListener;
+import kit.penny.tdlib.updates.internal.UpdateNotificationConsumer;
 import org.drinkless.tdlib.TdApi;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -15,10 +15,10 @@ class UpdateNotificationConsumerTest {
 
     private final UpdateNotificationConsumer<TdApi.UpdateNewChat> notificationConsumer;
 
-    private final UpdateNotificationListener<TdApi.UpdateNewChat> notificationListener;
+    private final ITdlibUpdateListener<TdApi.UpdateNewChat> notificationListener;
 
     public UpdateNotificationConsumerTest() {
-        notificationListener = mock(UpdateNotificationListener.class);
+        notificationListener = mock(ITdlibUpdateListener.class);
         notificationConsumer = new UpdateNotificationConsumer<>(notificationListener, TdApi.UpdateNewChat.class);
     }
 

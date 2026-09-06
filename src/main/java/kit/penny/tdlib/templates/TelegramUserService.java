@@ -1,8 +1,8 @@
-package kit.penny.clientbus.connector.telegram.client.templates;
+package kit.penny.tdlib.templates;
 
-import kit.penny.clientbus.connector.telegram.client.TelegramClient;
+import kit.penny.tdlib.client.TelegramClient;
 import org.drinkless.tdlib.TdApi;
-import kit.penny.clientbus.connector.telegram.client.templates.response.Response;
+import kit.penny.tdlib.client.Response;
 
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -12,11 +12,11 @@ import java.util.concurrent.CompletableFuture;
  *
  * @author Pavel Vorobyev
  */
-public class UserTemplate {
+public class TelegramUserService {
 
     private final TelegramClient telegramClient;
 
-    public UserTemplate(TelegramClient telegramClient) {
+    public TelegramUserService(TelegramClient telegramClient) {
         this.telegramClient = telegramClient;
     }
 

@@ -1,1 +1,1 @@
-kit.penny.clientbus.connector.telegram.TelegramClientAutoConfiguration
+kit.penny.tdlib.TelegramTdlibAutoConfiguration

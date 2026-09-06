@@ -1,7 +1,7 @@
 package kit.penny.clientbus.connector.telegram.client;
 
-import kit.penny.clientbus.connector.telegram.client.CoreUpdateHandler;
-import kit.penny.clientbus.connector.telegram.client.updates.UpdateNotificationListener;
+import kit.penny.tdlib.CoreUpdateHandler;
+import kit.penny.tdlib.updates.ITdlibUpdateListener;
 import org.drinkless.tdlib.TdApi;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +15,7 @@ class CoreHandlerTest {
     @Test
     void onResult() {
         var actualConstructorIdentifier = new AtomicInteger();
-        var updateNewChatListener = new UpdateNotificationListener<TdApi.UpdateNewChat>() {
+        var updateNewChatListener = new ITdlibUpdateListener<TdApi.UpdateNewChat>() {
             @Override
             public void handleNotification(TdApi.UpdateNewChat notification) {
                 actualConstructorIdentifier.set(notification.getConstructor());

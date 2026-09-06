@@ -1,6 +1,6 @@
-package kit.penny.clientbus.connector.telegram.client;
+package kit.penny.tdlib.updates.internal;
 
-import kit.penny.clientbus.connector.telegram.client.updates.UpdateNotificationListener;
+import kit.penny.tdlib.updates.ITdlibUpdateListener;
 import org.drinkless.tdlib.TdApi;
 
 import java.util.function.Consumer;
@@ -13,11 +13,11 @@ import java.util.function.Consumer;
  */
 final class UpdateNotificationConsumer<T extends TdApi.Update> implements Consumer<TdApi.Object> {
 
-    private final UpdateNotificationListener<T> notificationListener;
+    private final ITdlibUpdateListener<T> notificationListener;
 
     private final Class<T> type;
 
-    public UpdateNotificationConsumer(UpdateNotificationListener<T> notificationListener, Class<T> clazz) {
+    public UpdateNotificationConsumer(ITdlibUpdateListener<T> notificationListener, Class<T> clazz) {
         this.notificationListener = notificationListener;
         this.type = clazz;
     }

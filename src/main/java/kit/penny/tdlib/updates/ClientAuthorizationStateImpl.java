@@ -1,14 +1,14 @@
-package kit.penny.clientbus.connector.telegram.client.updates;
+package kit.penny.tdlib.updates;
 
 import static kit.penny.clientbus.connector.telegram.client.updates.AuthorizationStateCache.*;
 import static org.springframework.util.StringUtils.hasText;
 
 /**
- * Implementation of {@link ClientAuthorizationState}.
+ * Implementation of {@link ITelegramAuthorizationManager}.
  *
  * @author Pavel Vorobyev
  */
-public final class ClientAuthorizationStateImpl implements ClientAuthorizationState {
+public final class ClientAuthorizationStateImpl implements ITelegramAuthorizationManager {
 
     @Override
     public synchronized void checkAuthenticationCode(String code) {

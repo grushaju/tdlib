@@ -1,4 +1,4 @@
-package kit.penny.clientbus.connector.telegram.exception;
+package kit.penny.tdlib.exception;
 
 /**
  * Telegram client configuration exception.

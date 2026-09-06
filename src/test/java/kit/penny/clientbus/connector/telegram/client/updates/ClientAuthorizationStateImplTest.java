@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ClientAuthorizationStateImplTest extends AbstractTest {
 
     @Autowired
-    private ClientAuthorizationState clientAuthorizationState;
+    private kit.penny.tdlib.updates.ITelegramAuthorizationManager ITelegramAuthorizationManager;
 
     @BeforeEach
     void clearCacheValues() {
@@ -29,14 +29,14 @@ class ClientAuthorizationStateImplTest extends AbstractTest {
     void checkAuthenticationCode() {
         //setup flag that client waits authentication code
         waitAuthenticationCode.set(true);
-        assertTrue(clientAuthorizationState.isWaitAuthenticationCode());
+        assertTrue(ITelegramAuthorizationManager.isWaitAuthenticationCode());
 
         //check code
         var code = "code";
-        clientAuthorizationState.checkAuthenticationCode(code);
+        ITelegramAuthorizationManager.checkAuthenticationCode(code);
 
         //code accepted
-        assertFalse(clientAuthorizationState.isWaitAuthenticationCode());
+        assertFalse(ITelegramAuthorizationManager.isWaitAuthenticationCode());
         assertEquals(code, AuthorizationStateCache.codeInputToCheck);
     }
 
@@ -44,14 +44,14 @@ class ClientAuthorizationStateImplTest extends AbstractTest {
     void checkAuthenticationPassword() {
         //setup flag that client waits authentication password
         waitAuthenticationPassword.set(true);
-        assertTrue(clientAuthorizationState.isWaitAuthenticationPassword());
+        assertTrue(ITelegramAuthorizationManager.isWaitAuthenticationPassword());
 
         //check password
         var password = "password";
-        clientAuthorizationState.checkAuthenticationPassword(password);
+        ITelegramAuthorizationManager.checkAuthenticationPassword(password);
 
         //password accepted
-        assertFalse(clientAuthorizationState.isWaitAuthenticationPassword());
+        assertFalse(ITelegramAuthorizationManager.isWaitAuthenticationPassword());
         assertEquals(password, AuthorizationStateCache.passwordInputToCheck);
     }
 
@@ -59,24 +59,24 @@ class ClientAuthorizationStateImplTest extends AbstractTest {
     void checkEmailAddress() {
         //setup flag that client waits authentication email
         waitEmailAddress.set(true);
-        assertTrue(clientAuthorizationState.isWaitEmailAddress());
+        assertTrue(ITelegramAuthorizationManager.isWaitEmailAddress());
 
         //check email
         var email = "some_email";
-        clientAuthorizationState.checkEmailAddress(email);
+        ITelegramAuthorizationManager.checkEmailAddress(email);
 
         //email accepted
-        assertFalse(clientAuthorizationState.isWaitEmailAddress());
+        assertFalse(ITelegramAuthorizationManager.isWaitEmailAddress());
         assertEquals(email, emailAddressInputToCheck);
     }
 
     @Test
     void checkDefaults() {
-        assertFalse(clientAuthorizationState.haveAuthorization());
-        assertFalse(clientAuthorizationState.isWaitAuthenticationCode());
-        assertFalse(clientAuthorizationState.isWaitAuthenticationPassword());
-        assertFalse(clientAuthorizationState.isWaitEmailAddress());
-        assertFalse(clientAuthorizationState.isStateClosed());
+        assertFalse(ITelegramAuthorizationManager.haveAuthorization());
+        assertFalse(ITelegramAuthorizationManager.isWaitAuthenticationCode());
+        assertFalse(ITelegramAuthorizationManager.isWaitAuthenticationPassword());
+        assertFalse(ITelegramAuthorizationManager.isWaitEmailAddress());
+        assertFalse(ITelegramAuthorizationManager.isStateClosed());
     }
 
 }

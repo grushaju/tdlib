@@ -1,4 +1,4 @@
-package kit.penny.clientbus.connector.telegram.client.updates;
+package kit.penny.tdlib.updates;
 
 import org.drinkless.tdlib.TdApi;
 
@@ -8,7 +8,7 @@ import org.drinkless.tdlib.TdApi;
  *
  * @author Vorobyev Pavel
  */
-public interface UpdateNotificationListener<T extends TdApi.Update> {
+public interface ITdlibUpdateListener<T extends TdApi.Update> {
 
     /**
      * Handles incoming update event.

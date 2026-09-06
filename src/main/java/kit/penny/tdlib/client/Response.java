@@ -1,6 +1,6 @@
-package kit.penny.clientbus.connector.telegram.client.templates.response;
+package kit.penny.tdlib.client;
 
-import kit.penny.clientbus.connector.telegram.exception.TelegramClientTdApiException;
+import kit.penny.tdlib.exception.TdlibException;
 import org.drinkless.tdlib.TdApi;
 
 import java.util.Optional;
@@ -71,11 +71,11 @@ public final class Response<T extends TdApi.Object> {
      * Returns the TdApi.Object if it is not null, otherwise throws a TelegramClientTdApiException.
      *
      * @return TdApi.Object
-     * @throws TelegramClientTdApiException if the object is null
+     * @throws TdlibException if the object is null
      */
     public T getObjectOrThrow() {
         return Optional.ofNullable(object)
-                .orElseThrow(() -> new TelegramClientTdApiException("TdApi.Object is null", error));
+                .orElseThrow(() -> new TdlibException("TdApi.Object is null", error));
     }
 
     public Optional<TdApi.Error> getError() {

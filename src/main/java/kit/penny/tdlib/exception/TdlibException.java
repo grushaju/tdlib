@@ -1,4 +1,4 @@
-package kit.penny.clientbus.connector.telegram.exception;
+package kit.penny.tdlib.exception;
 
 import org.drinkless.tdlib.TdApi;
 
@@ -6,7 +6,7 @@ import org.drinkless.tdlib.TdApi;
  * Telegram TDLib exceptions.
  * @author Pavel Vorobyev
  */
-public class TelegramClientTdApiException extends RuntimeException {
+public class TdlibException extends RuntimeException {
 
     private final TdApi.Error error;
 
@@ -15,7 +15,7 @@ public class TelegramClientTdApiException extends RuntimeException {
     /**
      * @param message exception information message
      */
-    public TelegramClientTdApiException(String message) {
+    public TdlibException(String message) {
         this(message, null, null, null);
     }
 
@@ -23,7 +23,7 @@ public class TelegramClientTdApiException extends RuntimeException {
      * @param message exception information message
      * @param cause {@link Throwable}
      */
-    public TelegramClientTdApiException(String message, Throwable cause) {
+    public TdlibException(String message, Throwable cause) {
         this(message, cause, null, null);
     }
 
@@ -31,7 +31,7 @@ public class TelegramClientTdApiException extends RuntimeException {
      * @param message exception information message
      * @param error error from TDLib
      */
-    public TelegramClientTdApiException(String message, TdApi.Error error) {
+    public TdlibException(String message, TdApi.Error error) {
         this(message, null, error, null);
     }
 
@@ -40,7 +40,7 @@ public class TelegramClientTdApiException extends RuntimeException {
      * @param cause {@link Throwable}
      * @param error error from TDLib
      */
-    public TelegramClientTdApiException(String message, Throwable cause, TdApi.Error error) {
+    public TdlibException(String message, Throwable cause, TdApi.Error error) {
         this(message, cause, error, null);
     }
 
@@ -49,7 +49,7 @@ public class TelegramClientTdApiException extends RuntimeException {
      * @param error error from TDLib
      * @param query {@link TdApi.Function} the original function query that was causing the error
      */
-    public TelegramClientTdApiException(String message, TdApi.Error error, TdApi.Function<? extends TdApi.Object> query) {
+    public TdlibException(String message, TdApi.Error error, TdApi.Function<? extends TdApi.Object> query) {
         this(message, null, error, query);
     }
 
@@ -59,7 +59,7 @@ public class TelegramClientTdApiException extends RuntimeException {
      * @param error error from TDLib
      * @param query {@link TdApi.Function} the original function query that was causing the error
      */
-    public TelegramClientTdApiException(String message, Throwable cause, TdApi.Error error, TdApi.Function<? extends TdApi.Object> query) {
+    public TdlibException(String message, Throwable cause, TdApi.Error error, TdApi.Function<? extends TdApi.Object> query) {
         super(message, cause);
         this.error = error;
         this.query = query;

@@ -1,4 +1,4 @@
-package kit.penny.clientbus.connector.telegram.client;
+package kit.penny.tdlib.client;
 
 import org.drinkless.tdlib.TdApi;
 
@@ -8,7 +8,7 @@ import org.drinkless.tdlib.TdApi;
  *
  * @author Pavel Vorobyev
  */
-public interface QueryResultHandler<T extends TdApi.Object> {
+public interface IQueryResultHandler<T extends TdApi.Object> {
 
     /**
      * Callback called on result of query to TDLib.

@@ -1,17 +1,17 @@
-package kit.penny.clientbus.connector.telegram;
+package kit.penny.tdlib;
 
-import kit.penny.clientbus.connector.telegram.client.TelegramClient;
+import kit.penny.tdlib.client.TelegramClient;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 import kit.penny.clientbus.connector.telegram.client.runner.TelegramRunnersConsumer;
 import kit.penny.clientbus.connector.telegram.client.runner.TelegramRunnersConsumerImpl;
-import kit.penny.clientbus.connector.telegram.client.templates.ChatTemplate;
-import kit.penny.clientbus.connector.telegram.client.templates.UserTemplate;
-import kit.penny.clientbus.connector.telegram.client.updates.ClientAuthorizationState;
-import kit.penny.clientbus.connector.telegram.client.updates.ClientAuthorizationStateImpl;
-import kit.penny.clientbus.connector.telegram.client.updates.UpdateAuthorizationState;
-import kit.penny.clientbus.connector.telegram.client.updates.UpdateNotificationListener;
-import kit.penny.clientbus.connector.telegram.properties.TelegramProperties;
+import kit.penny.tdlib.templates.TelegramChatService;
+import kit.penny.tdlib.templates.TelegramUserService;
+import kit.penny.tdlib.updates.ITelegramAuthorizationManager;
+import kit.penny.tdlib.updates.ClientAuthorizationStateImpl;
+import kit.penny.tdlib.updates.UpdateAuthorizationState;
+import kit.penny.tdlib.updates.ITdlibUpdateListener;
+import kit.penny.tdlib.properties.TelegramProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -33,9 +33,9 @@ import java.util.Collection;
  */
 @Configuration
 @ConfigurationPropertiesScan(basePackages = "kit.penny.clientbus.connector.telegram.properties")
-public class TelegramClientAutoConfiguration {
+public class TelegramTdlibAutoConfiguration {
 
-    private final static Logger log = LoggerFactory.getLogger(TelegramClientAutoConfiguration.class);
+    private final static Logger log = LoggerFactory.getLogger(TelegramTdlibAutoConfiguration.class);
 
     //Loading TDLib library
     static {
@@ -57,37 +57,37 @@ public class TelegramClientAutoConfiguration {
      * Autoconfigured telegram client.
      *
      * @param properties {@link TelegramProperties}
-     * @param notificationHandlers collection of {@link UpdateNotificationListener} beans
+     * @param notificationHandlers collection of {@link ITdlibUpdateListener} beans
      * @param defaultHandler default handler for incoming updates
-     * @param clientAuthorizationState authorization state of the client
+     * @param ITelegramAuthorizationManager authorization state of the client
      * @return {@link TelegramClient}
      */
     @Bean
     public TelegramClient telegramClient(TelegramProperties properties,
-                                         Collection<UpdateNotificationListener<?>> notificationHandlers,
+                                         Collection<ITdlibUpdateListener<?>> notificationHandlers,
                                          Client.ResultHandler defaultHandler,
-                                         ClientAuthorizationState clientAuthorizationState) {
-        return new TelegramClient(properties, notificationHandlers, defaultHandler, clientAuthorizationState);
+                                         ITelegramAuthorizationManager ITelegramAuthorizationManager) {
+        return new TelegramClient(properties, notificationHandlers, defaultHandler, ITelegramAuthorizationManager);
     }
 
     /**
      * Client authorization state.
      *
-     * @return {@link ClientAuthorizationState}
+     * @return {@link ITelegramAuthorizationManager}
      */
     @Bean
-    public ClientAuthorizationState clientAuthorizationState() {
+    public ITelegramAuthorizationManager clientAuthorizationState() {
         return new ClientAuthorizationStateImpl();
     }
 
     /**
      * Notification listener for authorization sate change.
      *
-     * @return {@link UpdateNotificationListener<TdApi.UpdateAuthorizationState>}
+     * @return {@link ITdlibUpdateListener <TdApi.UpdateAuthorizationState>}
      */
     @Bean
-    public UpdateNotificationListener<TdApi.UpdateAuthorizationState> updateAuthorizationNotification(TelegramProperties properties,
-                                                                                                      @Lazy TelegramClient telegramClient) {
+    public ITdlibUpdateListener<TdApi.UpdateAuthorizationState> updateAuthorizationNotification(TelegramProperties properties,
+                                                                                                @Lazy TelegramClient telegramClient) {
         return new UpdateAuthorizationState(properties, telegramClient);
     }
 
@@ -95,22 +95,22 @@ public class TelegramClientAutoConfiguration {
      * Template for {@link TdApi.User} related objects.
      *
      * @param telegramClient Telegram client.
-     * @return {@link UserTemplate}.
+     * @return {@link TelegramUserService}.
      */
     @Bean
-    public UserTemplate userTemplate(@Lazy TelegramClient telegramClient) {
-        return new UserTemplate(telegramClient);
+    public TelegramUserService userTemplate(@Lazy TelegramClient telegramClient) {
+        return new TelegramUserService(telegramClient);
     }
 
     /**
      * Template for {@link TdApi.Chat} related objects.
      *
      * @param telegramClient Telegram client.
-     * @return {@link ChatTemplate}.
+     * @return {@link TelegramChatService}.
      */
     @Bean
-    public ChatTemplate chatTemplate(@Lazy TelegramClient telegramClient) {
-        return new ChatTemplate(telegramClient);
+    public TelegramChatService chatTemplate(@Lazy TelegramClient telegramClient) {
+        return new TelegramChatService(telegramClient);
     }
 
     /**
@@ -134,7 +134,7 @@ public class TelegramClientAutoConfiguration {
      * @return {@link TelegramRunnersConsumer}
      */
     @Bean
-    public TelegramRunnersConsumer telegramRunnersConsumer(ClientAuthorizationState authorizationState,
+    public TelegramRunnersConsumer telegramRunnersConsumer(ITelegramAuthorizationManager authorizationState,
                                                            ApplicationArguments applicationArguments,
                                                            ApplicationContext applicationContext) {
         return new TelegramRunnersConsumerImpl(authorizationState, applicationArguments, applicationContext);

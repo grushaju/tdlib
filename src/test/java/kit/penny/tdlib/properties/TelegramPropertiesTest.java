@@ -1,4 +1,4 @@
-package kit.penny.clientbus.connector.telegram.properties;
+package kit.penny.tdlib.properties;
 
 import kit.penny.clientbus.connector.telegram.client.AbstractTest;
 import org.junit.jupiter.api.Test;

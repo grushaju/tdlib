@@ -1,7 +1,7 @@
 package kit.penny.clientbus.connector.telegram.client.runner;
 
 import kit.penny.clientbus.connector.telegram.TelegramRunner;
-import kit.penny.clientbus.connector.telegram.client.updates.ClientAuthorizationStateImpl;
+import kit.penny.tdlib.updates.ClientAuthorizationStateImpl;
 import org.mockito.Mockito;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.context.ApplicationContext;

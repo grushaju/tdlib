@@ -1,9 +1,9 @@
-package kit.penny.clientbus.connector.telegram.client.updates;
+package kit.penny.tdlib.updates;
 
-import kit.penny.clientbus.connector.telegram.client.QueryResultHandler;
-import kit.penny.clientbus.connector.telegram.client.TelegramClient;
-import kit.penny.clientbus.connector.telegram.exception.TelegramClientConfigurationException;
-import kit.penny.clientbus.connector.telegram.properties.TelegramProperties;
+import kit.penny.tdlib.client.IQueryResultHandler;
+import kit.penny.tdlib.client.TelegramClient;
+import kit.penny.tdlib.exception.TelegramClientConfigurationException;
+import kit.penny.tdlib.properties.TelegramProperties;
 import org.drinkless.tdlib.TdApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +18,7 @@ import static org.springframework.util.StringUtils.hasText;
 /**
  * Handler of {@link TdApi.AuthorizationState} updates.
  */
-public class UpdateAuthorizationState implements UpdateNotificationListener<TdApi.UpdateAuthorizationState> {
+public class UpdateAuthorizationState implements ITdlibUpdateListener<TdApi.UpdateAuthorizationState> {
 
     private final Logger log = LoggerFactory.getLogger(UpdateAuthorizationState.class);
 
@@ -254,7 +254,7 @@ public class UpdateAuthorizationState implements UpdateNotificationListener<TdAp
         return hasText(s) ? s : "";
     }
 
-    private class AuthorizationRequestHandler implements QueryResultHandler<TdApi.Ok> {
+    private class AuthorizationRequestHandler implements IQueryResultHandler<TdApi.Ok> {
 
         /**
          * {@inheritDoc}

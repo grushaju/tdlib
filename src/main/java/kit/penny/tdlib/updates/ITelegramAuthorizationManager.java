@@ -1,4 +1,4 @@
-package kit.penny.clientbus.connector.telegram.client.updates;
+package kit.penny.tdlib.updates;
 
 import org.drinkless.tdlib.TdApi;
 
@@ -10,7 +10,7 @@ import org.drinkless.tdlib.TdApi;
  *
  * @author Pavel Vorobyev
  */
-public sealed interface ClientAuthorizationState permits ClientAuthorizationStateImpl {
+public sealed interface ITelegramAuthorizationManager permits ClientAuthorizationStateImpl {
     /**
      * Sends an authentication code to the TDLib for check.
      *

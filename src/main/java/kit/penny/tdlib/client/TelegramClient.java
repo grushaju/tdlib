@@ -1,11 +1,11 @@
-package kit.penny.clientbus.connector.telegram.client;
+package kit.penny.tdlib.client;
 
-import kit.penny.clientbus.connector.telegram.client.templates.response.Response;
-import kit.penny.clientbus.connector.telegram.client.updates.ClientAuthorizationState;
-import kit.penny.clientbus.connector.telegram.client.updates.UpdateNotificationListener;
-import kit.penny.clientbus.connector.telegram.exception.TelegramClientConfigurationException;
-import kit.penny.clientbus.connector.telegram.exception.TelegramClientTdApiException;
-import kit.penny.clientbus.connector.telegram.properties.TelegramProperties;
+import kit.penny.tdlib.CoreUpdateHandler;
+import kit.penny.tdlib.updates.ITelegramAuthorizationManager;
+import kit.penny.tdlib.updates.ITdlibUpdateListener;
+import kit.penny.tdlib.exception.TelegramClientConfigurationException;
+import kit.penny.tdlib.exception.TdlibException;
+import kit.penny.tdlib.properties.TelegramProperties;
 import jakarta.annotation.PreDestroy;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
@@ -35,21 +35,21 @@ public class TelegramClient {
 
     private final Client.ResultHandler defaultHandler;
 
-    private final ClientAuthorizationState clientAuthorizationState;
+    private final ITelegramAuthorizationManager ITelegramAuthorizationManager;
 
     /**
      * @param properties TDlib client properties
      * @param notificationHandlers registered notifications handlers
      * @param defaultHandler default handler for unhandled events
-     * @param clientAuthorizationState authorization state of the client
+     * @param ITelegramAuthorizationManager authorization state of the client
      */
     public TelegramClient(TelegramProperties properties,
-                          Collection<UpdateNotificationListener<?>> notificationHandlers,
+                          Collection<ITdlibUpdateListener<?>> notificationHandlers,
                           Client.ResultHandler defaultHandler,
-                          ClientAuthorizationState clientAuthorizationState) {
+                          ITelegramAuthorizationManager ITelegramAuthorizationManager) {
         this.defaultHandler = defaultHandler;
         checkProperties(properties);
-        this.clientAuthorizationState = clientAuthorizationState;
+        this.ITelegramAuthorizationManager = ITelegramAuthorizationManager;
         this.client = initializeNativeClient(properties, notificationHandlers);
     }
 
@@ -122,7 +122,7 @@ public class TelegramClient {
         }
     }
 
-    private Client initializeNativeClient(TelegramProperties properties, Collection<UpdateNotificationListener<?>> notificationHandlers) {
+    private Client initializeNativeClient(TelegramProperties properties, Collection<ITdlibUpdateListener<?>> notificationHandlers) {
         var logVerbosityLevel = new TdApi.SetLogVerbosityLevel(properties.logVerbosityLevel());
         try {
             Client.execute(logVerbosityLevel);
@@ -151,10 +151,10 @@ public class TelegramClient {
     void cleanUp() throws InterruptedException {
         send(new TdApi.Close());
         Instant startAwait = Instant.now();
-        while (!clientAuthorizationState.isStateClosed() && startAwait.plusSeconds(30).isAfter(Instant.now())) {
+        while (!ITelegramAuthorizationManager.isStateClosed() && startAwait.plusSeconds(30).isAfter(Instant.now())) {
             TimeUnit.MILLISECONDS.sleep(200);
         }
-        if (!clientAuthorizationState.isStateClosed()) {
+        if (!ITelegramAuthorizationManager.isStateClosed()) {
             log.warn("Closed, but TDLib client isn't in its final state");
         }
         log.info("Goodbye!");
@@ -199,7 +199,7 @@ public class TelegramClient {
 
     /**
      * Sends a request to the TDLib asynchronously.
-     * If this stage completes exceptionally you can handle cause {@link TelegramClientTdApiException}
+     * If this stage completes exceptionally you can handle cause {@link TdlibException}
      *
      * @throws NullPointerException if query is null.
      * @param query object representing a query to the TDLib.
@@ -238,7 +238,7 @@ public class TelegramClient {
      */
     @SuppressWarnings("unchecked")
     public <T extends TdApi.Object> void sendWithCallback(TdApi.Function<T> query,
-                                                          QueryResultHandler<T> resultHandler) {
+                                                          IQueryResultHandler<T> resultHandler) {
         Objects.requireNonNull(query);
         client.send(query, object -> {
             if (object instanceof TdApi.Error err) {
