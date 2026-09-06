@@ -32,7 +32,7 @@ import java.util.Collection;
  * @author Pavel Vorobyev
  */
 @Configuration
-@ConfigurationPropertiesScan(basePackages = "kit.penny.server.connector.telegram.properties")
+@ConfigurationPropertiesScan(basePackages = "kit.penny.clientbus.connector.telegram.properties")
 public class TelegramClientAutoConfiguration {
 
     private final static Logger log = LoggerFactory.getLogger(TelegramClientAutoConfiguration.class);
