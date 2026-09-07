@@ -4,8 +4,6 @@ import kit.penny.tdlib.updates.TelegramAuthorizationManager;
 import kit.penny.tdlib.updates.internal.TdlibUpdateDispatcher;
 import kit.penny.tdlib.query.ITdlibQueryResultHandler;
 import kit.penny.tdlib.query.TdlibResponse;
-import kit.penny.tdlib.updates.ITelegramAuthorizationManager;
-import kit.penny.tdlib.updates.ITdlibUpdateListener;
 import kit.penny.tdlib.exception.TdlibConfigurationException;
 import kit.penny.tdlib.exception.TdlibException;
 import kit.penny.tdlib.properties.TelegramProperties;
@@ -37,6 +35,13 @@ public class TelegramClient {
 
     private final TdlibUpdateDispatcher updateDispatcher;
 
+
+    public TelegramClient(TelegramProperties properties,
+                          TdlibUpdateDispatcher updateDispatcher,
+                          TelegramAuthorizationManager authorizationManager) {
+        this(properties, updateDispatcher, authorizationManager, null);
+    }
+
     /**
      * @param properties TDlib client properties
      * @param updateDispatcher registered update dispatcher
@@ -44,11 +49,14 @@ public class TelegramClient {
      */
     public TelegramClient(TelegramProperties properties,
                           TdlibUpdateDispatcher updateDispatcher,
-                          TelegramAuthorizationManager ITelegramAuthorizationManager) {
+                          TelegramAuthorizationManager ITelegramAuthorizationManager,
+                          Client client) {
         this.updateDispatcher = updateDispatcher;
         this.telegramAuthorizationManager = ITelegramAuthorizationManager;
         checkProperties(properties);
-        this.client = initializeNativeClient(properties);
+        this.client = client != null
+                ? client
+                : initializeNativeClient(properties);
     }
 
     private void checkProperties(TelegramProperties properties) {
@@ -100,7 +108,7 @@ public class TelegramClient {
                          spring.telegram.client.proxy.http.username
                          spring.telegram.client.proxy.http.password
                          spring.telegram.client.proxy.http.http-only
-                         """);
+                        """);
             }
         } else if (socks5 != null) {
             if (!hasText(socks5.username()) || !hasText(socks5.password())) {
@@ -108,7 +116,7 @@ public class TelegramClient {
                         Socks5 proxy settings not filled. Specify properties:
                          spring.telegram.client.proxy.socks5.username
                          spring.telegram.client.proxy.socks5.password
-                         """);
+                        """);
             }
         } else if (mtProto != null) {
             if (!hasText(mtProto.secret())) {
@@ -189,7 +197,6 @@ public class TelegramClient {
      * @throws NullPointerException if query is null.
      * @return {@link TdlibResponse <T>} response.
      */
-    @SuppressWarnings("unchecked")
     public <T extends TdApi.Object> TdlibResponse<T> send(
             TdApi.Function<T> query) {
 
@@ -225,7 +232,7 @@ public class TelegramClient {
      *
      * @throws NullPointerException if query is null.
      * @param query object representing a query to the TDLib.
-     * @return {@link CompletableFuture< TdlibResponse >} response from TDLib.
+     * @return {@link CompletableFuture<TdlibResponse>} response from TDLib.
      */
     public <T extends TdApi.Object> CompletableFuture<TdlibResponse<T>> sendAsync(
             TdApi.Function<T> query) {
