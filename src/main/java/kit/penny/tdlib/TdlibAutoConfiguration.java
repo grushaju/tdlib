@@ -6,7 +6,6 @@ import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 import kit.penny.tdlib.service.TelegramChatService;
 import kit.penny.tdlib.service.TelegramUserService;
-import kit.penny.tdlib.updates.ITelegramAuthorizationManager;
 import kit.penny.tdlib.updates.TelegramAuthorizationManager;
 import kit.penny.tdlib.updates.UpdateAuthorizationState;
 import kit.penny.tdlib.updates.ITdlibUpdateListener;
@@ -14,9 +13,9 @@ import kit.penny.tdlib.properties.TelegramProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 
 import java.util.Collection;
@@ -26,7 +25,7 @@ import java.util.Collection;
  *
  * @author Pavel Grushin
  */
-@Configuration
+@AutoConfiguration
 @EnableConfigurationProperties(TelegramProperties.class)
 public class TdlibAutoConfiguration {
 
@@ -36,21 +35,21 @@ public class TdlibAutoConfiguration {
      * Autoconfigured telegram client.
      *
      * @param properties {@link TelegramProperties}
-     * @param notificationHandlers collection of {@link ITdlibUpdateListener} beans
+     * @param updateDispatcher collection of {@link ITdlibUpdateListener} beans
      * @param authorizationManager authorization state of the client
      * @return {@link TelegramClient}
      */
     @Bean
     public TelegramClient telegramClient(TelegramProperties properties,
-                                         Collection<ITdlibUpdateListener<?>> notificationHandlers,
-                                         ITelegramAuthorizationManager authorizationManager) {
-        return new TelegramClient(properties, notificationHandlers, defaultHandler(), authorizationManager);
+                                         TdlibUpdateDispatcher updateDispatcher,
+                                         TelegramAuthorizationManager authorizationManager) {
+        return new TelegramClient(properties, updateDispatcher, authorizationManager);
     }
 
     /**
      * Client authorization state.
      *
-     * @return {@link ITelegramAuthorizationManager}
+     * @return {@link TelegramAuthorizationManager}
      */
     @Bean
     public TelegramAuthorizationManager authorizationManager() {

@@ -32,6 +32,8 @@ public final class TelegramAuthorizationManager implements ITelegramAuthorizatio
     private final AtomicBoolean authorized = new AtomicBoolean();
     private final AtomicBoolean stateClosed = new AtomicBoolean();
 
+    private final CompletableFuture<Void> closedFuture = new CompletableFuture<>();
+
     @Override
     public synchronized void checkAuthenticationCode(String code) {
         complete(authenticationCode, waitAuthenticationCode, code);
@@ -125,6 +127,8 @@ public final class TelegramAuthorizationManager implements ITelegramAuthorizatio
         waitAuthenticationCode.set(false);
         waitAuthenticationPassword.set(false);
         waitEmailAddress.set(false);
+
+        closedFuture.complete(null);
     }
 
     private CompletableFuture<String> await(
@@ -169,5 +173,9 @@ public final class TelegramAuthorizationManager implements ITelegramAuthorizatio
         if (future != null && !future.isDone()) {
             future.completeExceptionally(new IllegalStateException(message));
         }
+    }
+
+    public CompletableFuture<Void> closedFuture() {
+        return closedFuture;
     }
 }

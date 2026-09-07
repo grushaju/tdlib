@@ -1,5 +1,6 @@
 package kit.penny.tdlib.client;
 
+import kit.penny.tdlib.updates.TelegramAuthorizationManager;
 import kit.penny.tdlib.updates.internal.TdlibUpdateDispatcher;
 import kit.penny.tdlib.query.ITdlibQueryResultHandler;
 import kit.penny.tdlib.query.TdlibResponse;
@@ -13,14 +14,11 @@ import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Collection;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeoutException;
 
 import static org.springframework.util.StringUtils.hasText;
 
@@ -35,24 +33,22 @@ public class TelegramClient {
 
     private final Client client;
 
-    private final Client.ResultHandler defaultHandler;
+    private final TelegramAuthorizationManager telegramAuthorizationManager;
 
-    private final ITelegramAuthorizationManager telegramAuthorizationManager;
+    private final TdlibUpdateDispatcher updateDispatcher;
 
     /**
      * @param properties TDlib client properties
-     * @param notificationHandlers registered notifications handlers
-     * @param defaultHandler default handler for unhandled events
+     * @param updateDispatcher registered update dispatcher
      * @param ITelegramAuthorizationManager authorization state of the client
      */
     public TelegramClient(TelegramProperties properties,
-                          Collection<ITdlibUpdateListener<?>> notificationHandlers,
-                          Client.ResultHandler defaultHandler,
-                          ITelegramAuthorizationManager ITelegramAuthorizationManager) {
-        this.defaultHandler = defaultHandler;
-        checkProperties(properties);
+                          TdlibUpdateDispatcher updateDispatcher,
+                          TelegramAuthorizationManager ITelegramAuthorizationManager) {
+        this.updateDispatcher = updateDispatcher;
         this.telegramAuthorizationManager = ITelegramAuthorizationManager;
-        this.client = initializeNativeClient(properties, notificationHandlers);
+        checkProperties(properties);
+        this.client = initializeNativeClient(properties);
     }
 
     private void checkProperties(TelegramProperties properties) {
@@ -124,13 +120,18 @@ public class TelegramClient {
         }
     }
 
-    private Client initializeNativeClient(TelegramProperties properties, Collection<ITdlibUpdateListener<?>> notificationHandlers) {
+    private Client initializeNativeClient(TelegramProperties properties) {
         var logVerbosityLevel = new TdApi.SetLogVerbosityLevel(properties.logVerbosityLevel());
         try {
             Client.execute(logVerbosityLevel);
         } catch (Client.ExecutionException e) {
             logError(logVerbosityLevel, e.error);
-            throw new RuntimeException(e);
+            throw new TdlibException(
+                    "Failed to configure TDLib log verbosity.",
+                    e,
+                    e.error,
+                    logVerbosityLevel
+            );
         }
         Client.LogMessageHandler logMessageHandler = (level, message) -> {
             switch (level) {
@@ -142,7 +143,7 @@ public class TelegramClient {
         };
         Client.setLogMessageHandler(properties.logVerbosityLevel(), logMessageHandler);
 
-        return Client.create(new TdlibUpdateDispatcher(notificationHandlers, defaultHandler), null, null);
+        return Client.create(updateDispatcher, null, null);
     }
 
     /**
@@ -150,15 +151,34 @@ public class TelegramClient {
      * Properly closing the client.
      */
     @PreDestroy
-    void cleanUp() throws InterruptedException {
-        send(new TdApi.Close());
-        Instant startAwait = Instant.now();
-        while (!telegramAuthorizationManager.isStateClosed() && startAwait.plusSeconds(30).isAfter(Instant.now())) {
-            TimeUnit.MILLISECONDS.sleep(200);
+    void cleanUp() {
+        var close = new TdApi.Close();
+
+        try {
+            sendWithCallback(close, (result, error) -> {
+                if (error != null) {
+                    logError(close, error);
+                }
+            });
+
+            telegramAuthorizationManager
+                    .closedFuture()
+                    .get(30, TimeUnit.SECONDS);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("TDLib client shutdown was interrupted.", e);
+
+        } catch (TimeoutException e) {
+            log.warn("TDLib client did not reach CLOSED state within 30 seconds.", e);
+
+        } catch (ExecutionException e) {
+            log.warn("TDLib client shutdown failed.", e);
+
+        } catch (RuntimeException e) {
+            log.warn("Failed to send TDLib Close request.", e);
         }
-        if (!telegramAuthorizationManager.isStateClosed()) {
-            log.warn("Closed, but TDLib client isn't in its final state");
-        }
+
         log.info("Goodbye!");
     }
 
@@ -170,33 +190,33 @@ public class TelegramClient {
      * @return {@link TdlibResponse <T>} response.
      */
     @SuppressWarnings("unchecked")
-    public <T extends TdApi.Object> TdlibResponse<T> send(TdApi.Function<T> query) {
-        Objects.requireNonNull(query);
-        var ref = new AtomicReference<TdApi.Object>();
-        client.send(query, ref::set);
-        var sent = Instant.now();
-        while (ref.get() == null &&
-                sent.plus(30, ChronoUnit.SECONDS).isAfter(Instant.now())) {
-            /*wait for result*/
-            try {
-                TimeUnit.MILLISECONDS.sleep(5);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e.getMessage());
-            }
-        }
+    public <T extends TdApi.Object> TdlibResponse<T> send(
+            TdApi.Function<T> query) {
 
-        TdApi.Object obj = ref.get();
-        if (obj == null) {
+        Objects.requireNonNull(query);
+
+        try {
+            return sendAsync(query).get(30, TimeUnit.SECONDS);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new TdlibException("TDLib request interrupted.", e);
+
+        } catch (TimeoutException e) {
             var error = new TdApi.Error(0, "TDLib request timeout.");
             logError(query, error);
             return new TdlibResponse<>(null, error);
-        } else if (obj instanceof TdApi.Error err) {
-            logError(query, err);
-            return new TdlibResponse<>(null, err);
-        }
 
-        return new TdlibResponse<>((T) obj, null);
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+
+            throw new TdlibException(
+                    "TDLib request failed.",
+                    e.getCause()
+            );
+        }
     }
 
     /**
@@ -207,15 +227,27 @@ public class TelegramClient {
      * @param query object representing a query to the TDLib.
      * @return {@link CompletableFuture< TdlibResponse >} response from TDLib.
      */
-    public <T extends TdApi.Object> CompletableFuture<TdlibResponse<T>> sendAsync(TdApi.Function<T> query) {
+    public <T extends TdApi.Object> CompletableFuture<TdlibResponse<T>> sendAsync(
+            TdApi.Function<T> query) {
+
         Objects.requireNonNull(query);
         var future = new CompletableFuture<TdlibResponse<T>>();
-        sendWithCallback(query, ((obj, error) -> {
-            if (error != null) {
-                logError(query, error);
-            }
-            future.complete(new TdlibResponse<>(obj, error));
-        }));
+        try {
+            sendWithCallback(query, (obj, error) -> {
+                try {
+                    if (error != null) {
+                        logError(query, error);
+                    }
+
+                    future.complete(new TdlibResponse<>(obj, error));
+                } catch (RuntimeException e) {
+                    future.completeExceptionally(e);
+                }
+            });
+        } catch (RuntimeException e) {
+            future.completeExceptionally(e);
+        }
+
         return future;
     }
 
@@ -239,9 +271,13 @@ public class TelegramClient {
      * @param <T> The object type that is returned by the function
      */
     @SuppressWarnings("unchecked")
-    public <T extends TdApi.Object> void sendWithCallback(TdApi.Function<T> query,
-                                                          ITdlibQueryResultHandler<T> resultHandler) {
+    public <T extends TdApi.Object> void sendWithCallback(
+            TdApi.Function<T> query,
+            ITdlibQueryResultHandler<T> resultHandler) {
+
         Objects.requireNonNull(query);
+        Objects.requireNonNull(resultHandler);
+
         client.send(query, object -> {
             if (object instanceof TdApi.Error err) {
                 resultHandler.onResult(null, err);
