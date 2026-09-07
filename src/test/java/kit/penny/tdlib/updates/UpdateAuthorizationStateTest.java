@@ -1,8 +1,7 @@
-package kit.penny.clientbus.connector.telegram.client.updates;
+package kit.penny.tdlib.updates;
 
-import kit.penny.clientbus.connector.telegram.client.AbstractTest;
-import kit.penny.tdlib.client.IQueryResultHandler;
-import kit.penny.tdlib.updates.ITdlibUpdateListener;
+import kit.penny.tdlib.AbstractTest;
+import kit.penny.tdlib.query.ITdlibQueryResultHandler;
 import org.drinkless.tdlib.TdApi;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -107,15 +106,15 @@ class UpdateAuthorizationStateTest extends AbstractTest {
 
     private void handleAuthorizationStateWaitTdlibParameters() {
         ArgumentCaptor<TdApi.SetTdlibParameters> paramsCaptor = ArgumentCaptor.forClass(TdApi.SetTdlibParameters.class);
-        verify(telegramClient).sendWithCallback(paramsCaptor.capture(), any(IQueryResultHandler.class));
-        verify(telegramClient).sendWithCallback(any(TdApi.AddProxy.class), any(IQueryResultHandler.class));
+        verify(telegramClient).sendWithCallback(paramsCaptor.capture(), any(ITdlibQueryResultHandler.class));
+        verify(telegramClient).sendWithCallback(any(TdApi.AddProxy.class), any(ITdlibQueryResultHandler.class));
         TdApi.SetTdlibParameters tdlibParameters = paramsCaptor.getValue();
         assertEquals(123, tdlibParameters.apiId);
     }
 
     private void handleAuthorizationStateWaitPhoneNumber() {
         ArgumentCaptor<TdApi.SetAuthenticationPhoneNumber> captor = ArgumentCaptor.forClass(TdApi.SetAuthenticationPhoneNumber.class);
-        verify(telegramClient).sendWithCallback(captor.capture(), any(IQueryResultHandler.class));
+        verify(telegramClient).sendWithCallback(captor.capture(), any(ITdlibQueryResultHandler.class));
         assertEquals("123456789", captor.getValue().phoneNumber);
     }
 
@@ -124,7 +123,7 @@ class UpdateAuthorizationStateTest extends AbstractTest {
     }
 
     private void verifyTelegramClientNotInvoked() {
-        verify(telegramClient, never()).sendWithCallback(any(TdApi.Function.class), any(IQueryResultHandler.class));
+        verify(telegramClient, never()).sendWithCallback(any(TdApi.Function.class), any(ITdlibQueryResultHandler.class));
         verify(telegramClient, never()).send(any(TdApi.Function.class));
         verify(telegramClient, never()).send(any(TdApi.Function.class));
         verify(telegramClient, never()).sendAsync(any(TdApi.Function.class));
@@ -133,28 +132,28 @@ class UpdateAuthorizationStateTest extends AbstractTest {
 
     private void verifyAuthorizationStateWaitCode() {
         var authCodeCaptor = ArgumentCaptor.forClass(TdApi.CheckAuthenticationCode.class);
-        verify(telegramClient).sendWithCallback(authCodeCaptor.capture(), any(IQueryResultHandler.class));
+        verify(telegramClient).sendWithCallback(authCodeCaptor.capture(), any(ITdlibQueryResultHandler.class));
         assertEquals(authCode, authCodeCaptor.getValue().code);
         assertNull(AuthorizationStateCache.codeInputToCheck); // drop from cache after check
     }
 
     private void verifyAuthorizationStateWaitPassword() {
         var passwordCaptor = ArgumentCaptor.forClass(TdApi.CheckAuthenticationPassword.class);
-        verify(telegramClient).sendWithCallback(passwordCaptor.capture(), any(IQueryResultHandler.class));
+        verify(telegramClient).sendWithCallback(passwordCaptor.capture(), any(ITdlibQueryResultHandler.class));
         assertEquals(twoStepPassword, passwordCaptor.getValue().password);
         assertNull(AuthorizationStateCache.passwordInputToCheck); // drop from cache after check
     }
 
     private void verifyAuthorizationStateWaitEmailAddress() {
         var emailAddressCaptor = ArgumentCaptor.forClass(TdApi.SetAuthenticationEmailAddress.class);
-        verify(telegramClient).sendWithCallback(emailAddressCaptor.capture(), any(IQueryResultHandler.class));
+        verify(telegramClient).sendWithCallback(emailAddressCaptor.capture(), any(ITdlibQueryResultHandler.class));
         assertEquals(email, emailAddressCaptor.getValue().emailAddress);
         assertNull(AuthorizationStateCache.emailAddressInputToCheck); // drop from cache after check
     }
 
     private void verifyAuthorizationStateWaitEmailCode() {
         var codeFromEmailCaptor = ArgumentCaptor.forClass(TdApi.CheckAuthenticationEmailCode.class);
-        verify(telegramClient).sendWithCallback(codeFromEmailCaptor.capture(), any(IQueryResultHandler.class));
+        verify(telegramClient).sendWithCallback(codeFromEmailCaptor.capture(), any(ITdlibQueryResultHandler.class));
         TdApi.EmailAddressAuthenticationCode emailCode = (TdApi.EmailAddressAuthenticationCode) codeFromEmailCaptor.getValue().code;
         assertEquals(authCode, emailCode.code);
         assertNull(AuthorizationStateCache.codeInputToCheck); // drop from cache after check

@@ -1,4 +1,4 @@
-package kit.penny.tdlib.client;
+package kit.penny.tdlib.query;
 
 import kit.penny.tdlib.exception.TdlibException;
 import org.drinkless.tdlib.TdApi;
@@ -10,9 +10,9 @@ import java.util.function.Function;
 /**
  * Response wrapper for queries.
  *
- * @author Pavel Vorobyev
+ * @author Pavel Grushin
  */
-public final class Response<T extends TdApi.Object> {
+public final class TdlibResponse<T extends TdApi.Object> {
     private final T object;
     private final TdApi.Error error;
 
@@ -20,31 +20,31 @@ public final class Response<T extends TdApi.Object> {
      * @param object {@link TdApi.Object} Query response.
      * @param error  {@link TdApi.Error} Query error.
      */
-    public Response(T object, TdApi.Error error) {
+    public TdlibResponse(T object, TdApi.Error error) {
         this.object = object;
         this.error = error;
     }
 
     /**
-     * Map, or transform, the {@link TdApi.Object} if it exists inside {@link Response}
-     * otherwise return {@link Response} with existing {@link TdApi.Error}.
+     * Map, or transform, the {@link TdApi.Object} if it exists inside {@link TdlibResponse}
+     * otherwise return {@link TdlibResponse} with existing {@link TdApi.Error}.
      * @param mapFunction function to transform {@link TdApi.Object} in response
      * @param <R> type of new {@link TdApi.Object}
-     * @return {@link Response<R>}
+     * @return {@link TdlibResponse <R>}
      */
-    public <R extends TdApi.Object> Response<R> map(Function<T, R> mapFunction) {
+    public <R extends TdApi.Object> TdlibResponse<R> map(Function<T, R> mapFunction) {
         if (object != null) {
-            return new Response<>(mapFunction.apply(object), null);
+            return new TdlibResponse<>(mapFunction.apply(object), null);
         }
-        return new Response<>(null, error);
+        return new TdlibResponse<>(null, error);
     }
 
     /**
-     * Performs an action upon a successful function call to TDLib and returns current {@link Response<T>}.
+     * Performs an action upon a successful function call to TDLib and returns current {@link TdlibResponse <T>}.
      * @param action callback called upon a successful function call of query to TDLib
-     * @return {@link Response<T>}
+     * @return {@link TdlibResponse <T>}
      */
-    public Response<T> onSuccess(Consumer<T> action) {
+    public TdlibResponse<T> onSuccess(Consumer<T> action) {
         if (object != null) {
             action.accept(object);
         }
@@ -52,11 +52,11 @@ public final class Response<T extends TdApi.Object> {
     }
 
     /**
-     * Performs an action in case of an error and returns current {@link Response<T>}.
+     * Performs an action in case of an error and returns current {@link TdlibResponse <T>}.
      * @param action callback called in case of an error of query to TDLib
-     * @return {@link Response<T>}
+     * @return {@link TdlibResponse <T>}
      */
-    public Response<T> onError(Consumer<TdApi.Error> action) {
+    public TdlibResponse<T> onError(Consumer<TdApi.Error> action) {
         if (error != null) {
             action.accept(error);
         }

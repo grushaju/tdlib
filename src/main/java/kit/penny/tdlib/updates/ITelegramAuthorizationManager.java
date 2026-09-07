@@ -8,9 +8,9 @@ import org.drinkless.tdlib.TdApi;
  * received from TDLib.
  * Check functions will not take effect after `UpdateAuthorizationState` have been processed.
  *
- * @author Pavel Vorobyev
+ * @author Pavel Grushin
  */
-public sealed interface ITelegramAuthorizationManager permits ClientAuthorizationStateImpl {
+public sealed interface ITelegramAuthorizationManager permits TelegramAuthorizationManager {
     /**
      * Sends an authentication code to the TDLib for check.
      *

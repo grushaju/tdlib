@@ -4,7 +4,7 @@ import org.drinkless.tdlib.TdApi;
 
 /**
  * Telegram TDLib exceptions.
- * @author Pavel Vorobyev
+ * @author Pavel Grushin
  */
 public class TdlibException extends RuntimeException {
 

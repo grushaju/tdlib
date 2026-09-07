@@ -1,4 +1,4 @@
-package kit.penny.tdlib.client;
+package kit.penny.tdlib.query;
 
 import org.drinkless.tdlib.TdApi;
 
@@ -6,9 +6,9 @@ import org.drinkless.tdlib.TdApi;
  * Interface for handler for results of queries with callback to TDLib.
  * @param <T> The object type that is returned by the function
  *
- * @author Pavel Vorobyev
+ * @author Pavel Grushin
  */
-public interface IQueryResultHandler<T extends TdApi.Object> {
+public interface ITdlibQueryResultHandler<T extends TdApi.Object> {
 
     /**
      * Callback called on result of query to TDLib.

@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * Telegram client configuration properties.
  *
- * @author Pavel Vorobyev
+ * @author Pavel Grushin
  */
 @ConfigurationProperties(prefix = "spring.telegram.client")
 public record TelegramProperties(

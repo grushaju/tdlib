@@ -1,8 +1,7 @@
-package kit.penny.tdlib;
+package kit.penny.tdlib.updates.internal;
 
-import kit.penny.clientbus.connector.telegram.client.UpdateNotificationConsumer;
-import kit.penny.tdlib.updates.ITdlibUpdateListener;
 import kit.penny.tdlib.exception.TdlibException;
+import kit.penny.tdlib.updates.ITdlibUpdateListener;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 
@@ -14,13 +13,13 @@ import java.util.function.Consumer;
 /**
  * The main handler for incoming updates from TDLib.
  */
-final class TdlibUpdateDispatcher implements Client.ResultHandler {
+public final class TdlibUpdateDispatcher implements Client.ResultHandler {
 
     private final Map<Integer, Consumer<TdApi.Object>> tdUpdateHandlers = new HashMap<>();
 
     private final Client.ResultHandler defaultHandler;
 
-    TdlibUpdateDispatcher(Collection<ITdlibUpdateListener<?>> notifications, Client.ResultHandler defaultHandler) {
+    public TdlibUpdateDispatcher(Collection<ITdlibUpdateListener<?>> notifications, Client.ResultHandler defaultHandler) {
         this.defaultHandler = defaultHandler;
         notifications.forEach(ntf -> {
             var handler = new UpdateNotificationConsumer(ntf, ntf.notificationType());

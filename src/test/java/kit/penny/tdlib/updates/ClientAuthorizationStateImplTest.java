@@ -1,6 +1,6 @@
-package kit.penny.clientbus.connector.telegram.client.updates;
+package kit.penny.tdlib.updates;
 
-import kit.penny.clientbus.connector.telegram.client.AbstractTest;
+import kit.penny.tdlib.AbstractTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -6,7 +6,7 @@ import org.drinkless.tdlib.TdApi;
  * Interface for incoming updates from TDLib.
  * @param <T> type of update
  *
- * @author Vorobyev Pavel
+ * @author Grushin Pavel
  */
 public interface ITdlibUpdateListener<T extends TdApi.Update> {
 

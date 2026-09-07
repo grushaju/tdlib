@@ -1,9 +1,11 @@
 package kit.penny.tdlib.client;
 
-import kit.penny.tdlib.CoreUpdateHandler;
+import kit.penny.tdlib.updates.internal.TdlibUpdateDispatcher;
+import kit.penny.tdlib.query.ITdlibQueryResultHandler;
+import kit.penny.tdlib.query.TdlibResponse;
 import kit.penny.tdlib.updates.ITelegramAuthorizationManager;
 import kit.penny.tdlib.updates.ITdlibUpdateListener;
-import kit.penny.tdlib.exception.TelegramClientConfigurationException;
+import kit.penny.tdlib.exception.TdlibConfigurationException;
 import kit.penny.tdlib.exception.TdlibException;
 import kit.penny.tdlib.properties.TelegramProperties;
 import jakarta.annotation.PreDestroy;
@@ -25,7 +27,7 @@ import static org.springframework.util.StringUtils.hasText;
 /**
  * Telegram client component. Wrapper of native {@link Client} with authorization logic and notification handlers.
  *
- * @author Pavel Vorobyev
+ * @author Pavel Grushin
  */
 public class TelegramClient {
 
@@ -35,7 +37,7 @@ public class TelegramClient {
 
     private final Client.ResultHandler defaultHandler;
 
-    private final ITelegramAuthorizationManager ITelegramAuthorizationManager;
+    private final ITelegramAuthorizationManager telegramAuthorizationManager;
 
     /**
      * @param properties TDlib client properties
@@ -49,33 +51,33 @@ public class TelegramClient {
                           ITelegramAuthorizationManager ITelegramAuthorizationManager) {
         this.defaultHandler = defaultHandler;
         checkProperties(properties);
-        this.ITelegramAuthorizationManager = ITelegramAuthorizationManager;
+        this.telegramAuthorizationManager = ITelegramAuthorizationManager;
         this.client = initializeNativeClient(properties, notificationHandlers);
     }
 
     private void checkProperties(TelegramProperties properties) {
         if (properties.phone() == null) {
-            throw new TelegramClientConfigurationException("The phone number of the user not filled. " +
+            throw new TdlibConfigurationException("The phone number of the user not filled. " +
                     "Specify property spring.telegram.client.phone");
         }
         if (properties.apiId() == 0) {
-            throw new TelegramClientConfigurationException("Application identifier for Telegram API access is invalid. " +
+            throw new TdlibConfigurationException("Application identifier for Telegram API access is invalid. " +
                     "Specify property spring.telegram.client.api-id");
         }
         if (!hasText(properties.apiHash())) {
-            throw new TelegramClientConfigurationException("Application identifier hash for Telegram API access is invalid. " +
+            throw new TdlibConfigurationException("Application identifier hash for Telegram API access is invalid. " +
                     "Specify property spring.telegram.client.api-hash");
         }
         if (!hasText(properties.databaseEncryptionKey())) {
-            throw new TelegramClientConfigurationException("Encryption key for the database is invalid. " +
+            throw new TdlibConfigurationException("Encryption key for the database is invalid. " +
                     "Specify property spring.telegram.client.database-encryption-key");
         }
         if (!hasText(properties.systemLanguageCode())) {
-            throw new TelegramClientConfigurationException("IETF language tag of the user's operating system language; must be non-empty. " +
+            throw new TdlibConfigurationException("IETF language tag of the user's operating system language; must be non-empty. " +
                     "Specify property spring.telegram.client.system-language-code");
         }
         if (!hasText(properties.deviceModel())) {
-            throw new TelegramClientConfigurationException("Model of the device the application is being run on; must be non-empty. " +
+            throw new TdlibConfigurationException("Model of the device the application is being run on; must be non-empty. " +
                     "Specify property spring.telegram.client.device-model");
         }
         TelegramProperties.Proxy proxy = properties.proxy();
@@ -86,7 +88,7 @@ public class TelegramClient {
 
     private static void checkProxyProperties(TelegramProperties.Proxy proxy) {
         if (!hasText(proxy.server()) || proxy.port() <= 0) {
-            throw new TelegramClientConfigurationException("""
+            throw new TdlibConfigurationException("""
                     Proxy settings not filled. Specify properties:
                      spring.telegram.client.proxy.server
                      spring.telegram.client.proxy.port
@@ -97,7 +99,7 @@ public class TelegramClient {
         TelegramProperties.Proxy.ProxyMtProto mtProto = proxy.mtproto();
         if (http != null) {
             if (!hasText(http.password()) || !hasText(http.username())) {
-                throw new TelegramClientConfigurationException("""
+                throw new TdlibConfigurationException("""
                         Http proxy settings not filled. Specify properties:
                          spring.telegram.client.proxy.http.username
                          spring.telegram.client.proxy.http.password
@@ -106,7 +108,7 @@ public class TelegramClient {
             }
         } else if (socks5 != null) {
             if (!hasText(socks5.username()) || !hasText(socks5.password())) {
-                throw new TelegramClientConfigurationException("""
+                throw new TdlibConfigurationException("""
                         Socks5 proxy settings not filled. Specify properties:
                          spring.telegram.client.proxy.socks5.username
                          spring.telegram.client.proxy.socks5.password
@@ -114,11 +116,11 @@ public class TelegramClient {
             }
         } else if (mtProto != null) {
             if (!hasText(mtProto.secret())) {
-                throw new TelegramClientConfigurationException("MtProto proxy settings not filled. " +
+                throw new TdlibConfigurationException("MtProto proxy settings not filled. " +
                         "Specify property spring.telegram.client.proxy.mtProto.secret");
             }
         } else {
-            throw new TelegramClientConfigurationException("ProxyType not filled. Available types - http, socks5, mtproto");
+            throw new TdlibConfigurationException("ProxyType not filled. Available types - http, socks5, mtproto");
         }
     }
 
@@ -140,7 +142,7 @@ public class TelegramClient {
         };
         Client.setLogMessageHandler(properties.logVerbosityLevel(), logMessageHandler);
 
-        return Client.create(new CoreUpdateHandler(notificationHandlers, defaultHandler), null, null);
+        return Client.create(new TdlibUpdateDispatcher(notificationHandlers, defaultHandler), null, null);
     }
 
     /**
@@ -151,10 +153,10 @@ public class TelegramClient {
     void cleanUp() throws InterruptedException {
         send(new TdApi.Close());
         Instant startAwait = Instant.now();
-        while (!ITelegramAuthorizationManager.isStateClosed() && startAwait.plusSeconds(30).isAfter(Instant.now())) {
+        while (!telegramAuthorizationManager.isStateClosed() && startAwait.plusSeconds(30).isAfter(Instant.now())) {
             TimeUnit.MILLISECONDS.sleep(200);
         }
-        if (!ITelegramAuthorizationManager.isStateClosed()) {
+        if (!telegramAuthorizationManager.isStateClosed()) {
             log.warn("Closed, but TDLib client isn't in its final state");
         }
         log.info("Goodbye!");
@@ -165,10 +167,10 @@ public class TelegramClient {
      *
      * @param query object representing a query to the TDLib.
      * @throws NullPointerException if query is null.
-     * @return {@link Response <T>} response.
+     * @return {@link TdlibResponse <T>} response.
      */
     @SuppressWarnings("unchecked")
-    public <T extends TdApi.Object> Response<T> send(TdApi.Function<T> query) {
+    public <T extends TdApi.Object> TdlibResponse<T> send(TdApi.Function<T> query) {
         Objects.requireNonNull(query);
         var ref = new AtomicReference<TdApi.Object>();
         client.send(query, ref::set);
@@ -188,13 +190,13 @@ public class TelegramClient {
         if (obj == null) {
             var error = new TdApi.Error(0, "TDLib request timeout.");
             logError(query, error);
-            return new Response<>(null, error);
+            return new TdlibResponse<>(null, error);
         } else if (obj instanceof TdApi.Error err) {
             logError(query, err);
-            return new Response<>(null, err);
+            return new TdlibResponse<>(null, err);
         }
 
-        return new Response<>((T) obj, null);
+        return new TdlibResponse<>((T) obj, null);
     }
 
     /**
@@ -203,16 +205,16 @@ public class TelegramClient {
      *
      * @throws NullPointerException if query is null.
      * @param query object representing a query to the TDLib.
-     * @return {@link CompletableFuture<Response>} response from TDLib.
+     * @return {@link CompletableFuture< TdlibResponse >} response from TDLib.
      */
-    public <T extends TdApi.Object> CompletableFuture<Response<T>> sendAsync(TdApi.Function<T> query) {
+    public <T extends TdApi.Object> CompletableFuture<TdlibResponse<T>> sendAsync(TdApi.Function<T> query) {
         Objects.requireNonNull(query);
-        var future = new CompletableFuture<Response<T>>();
+        var future = new CompletableFuture<TdlibResponse<T>>();
         sendWithCallback(query, ((obj, error) -> {
             if (error != null) {
                 logError(query, error);
             }
-            future.complete(new Response<>(obj, error));
+            future.complete(new TdlibResponse<>(obj, error));
         }));
         return future;
     }
@@ -238,7 +240,7 @@ public class TelegramClient {
      */
     @SuppressWarnings("unchecked")
     public <T extends TdApi.Object> void sendWithCallback(TdApi.Function<T> query,
-                                                          IQueryResultHandler<T> resultHandler) {
+                                                          ITdlibQueryResultHandler<T> resultHandler) {
         Objects.requireNonNull(query);
         client.send(query, object -> {
             if (object instanceof TdApi.Error err) {

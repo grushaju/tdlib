@@ -1,4 +1,4 @@
-package kit.penny.clientbus.connector.telegram.client;
+package kit.penny.tdlib;
 
 import kit.penny.tdlib.CoreUpdateHandler;
 import kit.penny.tdlib.updates.ITdlibUpdateListener;

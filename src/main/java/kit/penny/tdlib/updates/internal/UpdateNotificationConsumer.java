@@ -9,7 +9,7 @@ import java.util.function.Consumer;
  * Consumer of incoming TDLib updates from listener.
  *
  * @param <T> listener type
- * @author Pavel Vorobyev
+ * @author Pavel Grushin
  */
 final class UpdateNotificationConsumer<T extends TdApi.Update> implements Consumer<TdApi.Object> {
 

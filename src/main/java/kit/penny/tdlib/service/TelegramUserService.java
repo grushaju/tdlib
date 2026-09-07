@@ -1,8 +1,8 @@
-package kit.penny.tdlib.templates;
+package kit.penny.tdlib.service;
 
 import kit.penny.tdlib.client.TelegramClient;
 import org.drinkless.tdlib.TdApi;
-import kit.penny.tdlib.client.Response;
+import kit.penny.tdlib.query.TdlibResponse;
 
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * This class simplifies the use of {@link TelegramClient} for {@link TdApi.User} related objects.
  *
- * @author Pavel Vorobyev
+ * @author Pavel Grushin
  */
 public class TelegramUserService {
 
@@ -24,9 +24,9 @@ public class TelegramUserService {
      * Returns information about a user by their identifier. This is an offline request.
      *
      * @param userId User identifier.
-     * @return {@link CompletableFuture<Response<TdApi.User>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.User>>}.
      */
-    public CompletableFuture<Response<TdApi.User>> getUser(long userId) {
+    public CompletableFuture<TdlibResponse<TdApi.User>> getUser(long userId) {
         return telegramClient.sendAsync(new TdApi.GetUser(userId));
     }
 
@@ -34,27 +34,27 @@ public class TelegramUserService {
      * Returns full information about a user by their identifier.
      *
      * @param userId User identifier.
-     * @return {@link CompletableFuture<Response<TdApi.UserFullInfo>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.UserFullInfo>>}.
      */
-    public CompletableFuture<Response<TdApi.UserFullInfo>> getUserFullInfo(long userId) {
+    public CompletableFuture<TdlibResponse<TdApi.UserFullInfo>> getUserFullInfo(long userId) {
         return telegramClient.sendAsync(new TdApi.GetUserFullInfo(userId));
     }
 
     /**
      * Returns an HTTPS link, which can be used to get information about the current user.
      *
-     * @return {@link CompletableFuture<Response<TdApi.UserLink>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.UserLink>>}.
      */
-    public CompletableFuture<Response<TdApi.UserLink>> getUserLink() {
+    public CompletableFuture<TdlibResponse<TdApi.UserLink>> getUserLink() {
         return telegramClient.sendAsync(new TdApi.GetUserLink());
     }
 
     /**
      * Returns the current user.
      *
-     * @return {@link CompletableFuture<Response<TdApi.User>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.User>>}.
      */
-    public CompletableFuture<Response<TdApi.User>> getMe() {
+    public CompletableFuture<TdlibResponse<TdApi.User>> getMe() {
         return telegramClient.sendAsync(new TdApi.GetMe());
     }
 
@@ -63,12 +63,12 @@ public class TelegramUserService {
      * Returns profile photo of the user. May be null.
      *
      * @param userId User identifier.
-     * @return {@link CompletableFuture<Response<TdApi.ProfilePhoto>>}. TdApi.ProfilePhoto may be null.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.ProfilePhoto>>}. TdApi.ProfilePhoto may be null.
      */
-    public CompletableFuture<Response<TdApi.ProfilePhoto>> getProfilePhoto(long userId) {
+    public CompletableFuture<TdlibResponse<TdApi.ProfilePhoto>> getProfilePhoto(long userId) {
         return getUser(userId).thenApply(userResponse -> {
             if (userResponse.getError().isPresent()) {
-                return new Response<>(null, userResponse.getError().get());
+                return new TdlibResponse<>(null, userResponse.getError().get());
             }
             return userResponse.map(user -> user.profilePhoto);
         });
@@ -79,13 +79,13 @@ public class TelegramUserService {
      * Returns user profile photo visible if the main photo is hidden by privacy settings. May be null.
      *
      * @param userId User identifier.
-     * @return {@link CompletableFuture<Response<TdApi.ChatPhoto>>}. TdApi.ChatPhoto may be null.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.ChatPhoto>>}. TdApi.ChatPhoto may be null.
      */
-    public CompletableFuture<Response<TdApi.ChatPhoto>> getPublicPhoto(long userId) {
+    public CompletableFuture<TdlibResponse<TdApi.ChatPhoto>> getPublicPhoto(long userId) {
         return getUserFullInfo(userId)
                 .thenApply(userFullInfoResponse -> {
                     if (userFullInfoResponse.getError().isPresent()) {
-                        return new Response<>(null, userFullInfoResponse.getError().get());
+                        return new TdlibResponse<>(null, userFullInfoResponse.getError().get());
                     }
                     return userFullInfoResponse.map(userFullInfo -> userFullInfo.publicPhoto);
                 });
@@ -97,9 +97,9 @@ public class TelegramUserService {
      * @param userId User identifier.
      * @param offset The number of photos to skip; must be non-negative.
      * @param limit The maximum number of photos to be returned; up to 100.
-     * @return {@link CompletableFuture<Response<TdApi.ChatPhotos>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.ChatPhotos>>}.
      */
-    public CompletableFuture<Response<TdApi.ChatPhotos>> getUserProfilePhotos(long userId, int offset, int limit) {
+    public CompletableFuture<TdlibResponse<TdApi.ChatPhotos>> getUserProfilePhotos(long userId, int offset, int limit) {
         return telegramClient.sendAsync(new TdApi.GetUserProfilePhotos(userId, offset, limit));
     }
 
@@ -107,9 +107,9 @@ public class TelegramUserService {
      * Searches a user by their phone number. Returns null if user can't be found.
      *
      * @param phoneNumber Phone number in international format to search for.
-     * @return {@link CompletableFuture<Response<TdApi.User>>}. TdApi.User may be null.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.User>>}. TdApi.User may be null.
      */
-    public CompletableFuture<Response<TdApi.User>> searchUserByPhoneNumber(String phoneNumber) {
+    public CompletableFuture<TdlibResponse<TdApi.User>> searchUserByPhoneNumber(String phoneNumber) {
         Objects.requireNonNull(phoneNumber);
         return telegramClient.sendAsync(new TdApi.SearchUserByPhoneNumber(phoneNumber, false));
     }
@@ -118,21 +118,21 @@ public class TelegramUserService {
      * Searches a user by username. Returns null if user can't be found.
      *
      * @param username Username to search for.
-     * @return {@link CompletableFuture<Response<TdApi.User>>}. TdApi.User may be null.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.User>>}. TdApi.User may be null.
      */
-    public CompletableFuture<Response<TdApi.User>> searchUserByUsername(String username) {
+    public CompletableFuture<TdlibResponse<TdApi.User>> searchUserByUsername(String username) {
         Objects.requireNonNull(username);
         return telegramClient.sendAsync(new TdApi.SearchPublicChat(username))
                 .thenCompose(chatResponse -> {
                     if (chatResponse.getError().isPresent()) {
-                        var response = new Response<TdApi.User>(null, chatResponse.getError().get());
+                        var response = new TdlibResponse<TdApi.User>(null, chatResponse.getError().get());
                         return CompletableFuture.completedFuture(response);
                     }
                     if (chatResponse.getObject().isPresent() &&
                             chatResponse.getObject().get().type instanceof TdApi.ChatTypePrivate typePrivate) {
                         return getUser(typePrivate.userId);
                     }
-                    var unknownError = new Response<TdApi.User>(null, new TdApi.Error(0, "Unknown error"));
+                    var unknownError = new TdlibResponse<TdApi.User>(null, new TdApi.Error(0, "Unknown error"));
                     return CompletableFuture.completedFuture(unknownError);
                 });
     }

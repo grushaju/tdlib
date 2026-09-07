@@ -1,6 +1,6 @@
-package kit.penny.tdlib.templates;
+package kit.penny.tdlib.service;
 
-import kit.penny.tdlib.client.Response;
+import kit.penny.tdlib.query.TdlibResponse;
 import kit.penny.tdlib.client.TelegramClient;
 import org.drinkless.tdlib.TdApi;
 
@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * This class simplifies the use of {@link TelegramClient} for chat related objects.
  *
- * @author Pavel Vorobyev
+ * @author Pavel Grushin
  */
 public class TelegramChatService {
 
@@ -24,9 +24,9 @@ public class TelegramChatService {
      * Returns information about a chat by its identifier; this is an offline request if the current user is not a bot.
      *
      * @param chatId Chat identifier.
-     * @return {@link CompletableFuture<     Response     <TdApi.Chat>>}.
+     * @return {@link CompletableFuture<      TdlibResponse      <TdApi.Chat>>}.
      */
-    public CompletableFuture<Response<TdApi.Chat>> getChat(long chatId) {
+    public CompletableFuture<TdlibResponse<TdApi.Chat>> getChat(long chatId) {
         return telegramClient.sendAsync(new TdApi.GetChat(chatId));
     }
 
@@ -35,9 +35,9 @@ public class TelegramChatService {
      * May return an error with a message "INVITE_REQUEST_SENT" if only a join request was created.
      *
      * @param chatId Chat identifier.
-     * @return {@link CompletableFuture<Response<TdApi.ChatJoinResult>>} Response to action.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.ChatJoinResult>>} Response to action.
      */
-    public CompletableFuture<Response<TdApi.ChatJoinResult>> joinChat(long chatId) {
+    public CompletableFuture<TdlibResponse<TdApi.ChatJoinResult>> joinChat(long chatId) {
         return telegramClient.sendAsync(new TdApi.JoinChat(chatId));
     }
 
@@ -47,9 +47,9 @@ public class TelegramChatService {
      *
      * @param query Query to search for.
      * @param limit The maximum number of chats to be returned.
-     * @return {@link CompletableFuture<Response<TdApi.Chats>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.Chats>>}.
      */
-    public CompletableFuture<Response<TdApi.Chats>> searchChats(String query, int limit) {
+    public CompletableFuture<TdlibResponse<TdApi.Chats>> searchChats(String query, int limit) {
         Objects.requireNonNull(query);
         return telegramClient.sendAsync(new TdApi.SearchChats(query, null, limit));
     }
@@ -59,9 +59,9 @@ public class TelegramChatService {
      * Returns the chat if found; otherwise, an error is returned.
      *
      * @param username Username to be resolved.
-     * @return {@link CompletableFuture<Response<TdApi.Chat>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.Chat>>}.
      */
-    public CompletableFuture<Response<TdApi.Chat>> searchPublicChat(String username) {
+    public CompletableFuture<TdlibResponse<TdApi.Chat>> searchPublicChat(String username) {
         Objects.requireNonNull(username);
         return telegramClient.sendAsync(new TdApi.SearchPublicChat(username));
     }
@@ -72,9 +72,9 @@ public class TelegramChatService {
      * Excludes private chats with contacts and chats already in the chat list from the results.
      *
      * @param query Query to search for.
-     * @return {@link CompletableFuture<Response<TdApi.Chats>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.Chats>>}.
      */
-    public CompletableFuture<Response<TdApi.Chats>> searchPublicChats(String query) {
+    public CompletableFuture<TdlibResponse<TdApi.Chats>> searchPublicChats(String query) {
         Objects.requireNonNull(query);
         return telegramClient.sendAsync(new TdApi.SearchPublicChats(query, null));
     }
@@ -83,9 +83,9 @@ public class TelegramChatService {
      * Removes the current user from chat members. Private and secret chats can't be left using this method.
      *
      * @param chatId Chat identifier.
-     * @return {@link CompletableFuture<Response<TdApi.Ok>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.Ok>>}.
      */
-    public CompletableFuture<Response<TdApi.Ok>> leaveChat(long chatId) {
+    public CompletableFuture<TdlibResponse<TdApi.Ok>> leaveChat(long chatId) {
         return telegramClient.sendAsync(new TdApi.LeaveChat(chatId));
     }
 
@@ -95,9 +95,9 @@ public class TelegramChatService {
      * Use the field chat.canBeDeletedForAllUsers to find whether the method can be applied to the chat.
      *
      * @param chatId Chat identifier.
-     * @return {@link CompletableFuture<Response<TdApi.Ok>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.Ok>>}.
      */
-    public CompletableFuture<Response<TdApi.Ok>> deleteChat(long chatId) {
+    public CompletableFuture<TdlibResponse<TdApi.Ok>> deleteChat(long chatId) {
         return telegramClient.sendAsync(new TdApi.DeleteChat(chatId));
     }
 
@@ -105,9 +105,9 @@ public class TelegramChatService {
      * Returns information about a basic group by its identifier. This is an offline request if the current user is not a bot.
      *
      * @param basicGroupId Basic group identifier.
-     * @return {@link CompletableFuture<Response<TdApi.BasicGroup>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.BasicGroup>>}.
      */
-    public CompletableFuture<Response<TdApi.BasicGroup>> getBasicGroup(long basicGroupId) {
+    public CompletableFuture<TdlibResponse<TdApi.BasicGroup>> getBasicGroup(long basicGroupId) {
         return telegramClient.sendAsync(new TdApi.GetBasicGroup(basicGroupId));
     }
 
@@ -115,9 +115,9 @@ public class TelegramChatService {
      * Returns full information about a basic group by its identifier.
      *
      * @param basicGroupId Basic group identifier.
-     * @return {@link CompletableFuture<Response<TdApi.BasicGroupFullInfo>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.BasicGroupFullInfo>>}.
      */
-    public CompletableFuture<Response<TdApi.BasicGroupFullInfo>> getBasicGroupFullInfo(long basicGroupId) {
+    public CompletableFuture<TdlibResponse<TdApi.BasicGroupFullInfo>> getBasicGroupFullInfo(long basicGroupId) {
         return telegramClient.sendAsync(new TdApi.GetBasicGroupFullInfo(basicGroupId));
     }
 
@@ -126,9 +126,9 @@ public class TelegramChatService {
      * This is an offline request if the current user is not a bot.
      *
      * @param supergroupId Supergroup or channel identifier.
-     * @return {@link CompletableFuture<Response<TdApi.Supergroup>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.Supergroup>>}.
      */
-    public CompletableFuture<Response<TdApi.Supergroup>> getSupergroup(long supergroupId) {
+    public CompletableFuture<TdlibResponse<TdApi.Supergroup>> getSupergroup(long supergroupId) {
         return telegramClient.sendAsync(new TdApi.GetSupergroup(supergroupId));
     }
 
@@ -136,9 +136,9 @@ public class TelegramChatService {
      * Returns full information about a supergroup or a channel by its identifier, cached for up to 1 minute.
      *
      * @param supergroupId Supergroup or channel identifier.
-     * @return {@link CompletableFuture<Response<TdApi.SupergroupFullInfo>>}.
+     * @return {@link CompletableFuture< TdlibResponse <TdApi.SupergroupFullInfo>>}.
      */
-    public CompletableFuture<Response<TdApi.SupergroupFullInfo>> getSupergroupFullInfo(long supergroupId) {
+    public CompletableFuture<TdlibResponse<TdApi.SupergroupFullInfo>> getSupergroupFullInfo(long supergroupId) {
         return telegramClient.sendAsync(new TdApi.GetSupergroupFullInfo(supergroupId));
     }
 

@@ -1,11 +1,10 @@
-package kit.penny.clientbus.connector.telegram.client;
+package kit.penny.tdlib;
 
-import kit.penny.tdlib.TelegramTdlibAutoConfiguration;
 import kit.penny.tdlib.client.TelegramClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@SpringBootTest(classes = {TelegramTdlibAutoConfiguration.class})
+@SpringBootTest(classes = {TdlibAutoConfiguration.class})
 public abstract class AbstractTest {
 
     @MockitoBean
