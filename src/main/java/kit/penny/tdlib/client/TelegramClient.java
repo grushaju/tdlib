@@ -47,7 +47,7 @@ public class TelegramClient {
      * @param updateDispatcher registered update dispatcher
      * @param ITelegramAuthorizationManager authorization state of the client
      */
-    public TelegramClient(TelegramProperties properties,
+    TelegramClient(TelegramProperties properties,
                           TdlibUpdateDispatcher updateDispatcher,
                           TelegramAuthorizationManager ITelegramAuthorizationManager,
                           Client client) {
@@ -143,9 +143,9 @@ public class TelegramClient {
         }
         Client.LogMessageHandler logMessageHandler = (level, message) -> {
             switch (level) {
-                case 0, 1 -> log.error(message);
-                case 2 -> log.warn(message);
-                case 3 -> log.info(message);
+                case 0 -> log.error(message);
+                case 1 -> log.warn(message);
+                case 2 -> log.info(message);
                 default -> log.debug(message);
             }
         };

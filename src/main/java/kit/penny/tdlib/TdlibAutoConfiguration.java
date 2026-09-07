@@ -73,7 +73,7 @@ public class TdlibAutoConfiguration {
      * Template for {@link TdlibUpdateDispatcher} related objects.
      *
      * @param notifications collection of {@link ITdlibUpdateListener} beans
-     * @return {@link TelegramUserService}.
+     * @return {@link TdlibUpdateDispatcher}.
      */
     @Bean
     public TdlibUpdateDispatcher tdlibUpdateDispatcher(Collection<ITdlibUpdateListener<?>> notifications) {
