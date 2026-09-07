@@ -66,7 +66,7 @@ public class TdlibAutoConfiguration {
     @Bean
     public ITdlibUpdateListener<TdApi.UpdateAuthorizationState> updateAuthorizationState(TelegramProperties properties,
                                                                                          @Lazy TelegramClient telegramClient,
-                                                                                         @Lazy TelegramAuthorizationManager authorizationManager) {
+                                                                                         TelegramAuthorizationManager authorizationManager) {
         return new UpdateAuthorizationState(properties, telegramClient, authorizationManager);
     }
 

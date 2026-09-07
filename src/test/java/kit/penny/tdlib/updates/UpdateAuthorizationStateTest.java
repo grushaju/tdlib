@@ -1,174 +1,401 @@
 package kit.penny.tdlib.updates;
 
-import kit.penny.tdlib.AbstractTest;
-import kit.penny.tdlib.query.ITdlibQueryResultHandler;
+import kit.penny.tdlib.client.TelegramClient;
+import kit.penny.tdlib.properties.TelegramProperties;
 import org.drinkless.tdlib.TdApi;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-class UpdateAuthorizationStateTest extends AbstractTest {
+class UpdateAuthorizationStateTest {
 
-    @Autowired
-    private ITdlibUpdateListener<TdApi.UpdateAuthorizationState> updateAuthorizationNotification;
+    private TelegramClient telegramClient;
+    private TelegramAuthorizationManager authorizationManager;
+    private TelegramProperties properties;
+    private UpdateAuthorizationState updateAuthorizationState;
 
-    @Autowired
-    private kit.penny.tdlib.updates.ITelegramAuthorizationManager ITelegramAuthorizationManager;
+    @BeforeEach
+    void setUp() {
+        telegramClient = mock(TelegramClient.class);
+        authorizationManager = new TelegramAuthorizationManager();
 
-    private final TdApi.UpdateAuthorizationState updateAuthorizationState = new TdApi.UpdateAuthorizationState();
+        properties = new TelegramProperties(
+                false,
+                "/tmp/tdlib/database",
+                "/tmp/tdlib/files",
+                "encryption-key",
+                true,
+                true,
+                true,
+                false,
+                123456,
+                "api-hash",
+                "+79990000000",
+                "ru",
+                "test-device",
+                "Linux",
+                "1.0.0",
+                0,
+                null
+        );
 
-    private static Stream<Arguments> authorizationStates() {
-        return Stream.of(
-                Arguments.of(new TdApi.AuthorizationStateWaitTdlibParameters()),
-                Arguments.of(new TdApi.AuthorizationStateWaitPhoneNumber()),
-                Arguments.of(new TdApi.AuthorizationStateWaitOtherDeviceConfirmation()),
-                Arguments.of(new TdApi.AuthorizationStateWaitCode()),
-                Arguments.of(new TdApi.AuthorizationStateWaitPassword()),
-                Arguments.of(new TdApi.AuthorizationStateWaitEmailAddress()),
-                Arguments.of(new TdApi.AuthorizationStateWaitEmailCode()),
-                Arguments.of(new TdApi.AuthorizationStateReady()),
-                Arguments.of(new TdApi.AuthorizationStateLoggingOut()),
-                Arguments.of(new TdApi.AuthorizationStateClosing()),
-                Arguments.of(new TdApi.AuthorizationStateClosed())
+        updateAuthorizationState = new UpdateAuthorizationState(
+                properties,
+                telegramClient,
+                authorizationManager
         );
     }
 
-    private final String authCode = "auth_code";
-    private final String twoStepPassword = "pass";
-    private final String email = "email";
+    @Test
+    void shouldSendTdlibParameters() {
+        updateAuthorizationState.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateWaitTdlibParameters()
+                )
+        );
 
-    @MethodSource("authorizationStates")
-    @ParameterizedTest
-    void handleNotification(TdApi.AuthorizationState authorizationState) {
-        updateAuthorizationState.authorizationState = authorizationState;
-        switch (authorizationState.getConstructor()) {
-            case TdApi.AuthorizationStateWaitTdlibParameters.CONSTRUCTOR -> {
-                updateAuthorizationNotification.handleNotification(updateAuthorizationState);
-                handleAuthorizationStateWaitTdlibParameters();
-            }
-            case TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR -> {
-                updateAuthorizationNotification.handleNotification(updateAuthorizationState);
-                handleAuthorizationStateWaitPhoneNumber();
-            }
-            case TdApi.AuthorizationStateWaitOtherDeviceConfirmation.CONSTRUCTOR -> {
-                updateAuthorizationNotification.handleNotification(updateAuthorizationState);
-                handleAuthorizationStateWaitOtherDeviceConfirmation();
-            }
-            case TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> {
-                AuthorizationStateCache.codeInputToCheck = authCode;
-                updateAuthorizationNotification.handleNotification(updateAuthorizationState);
-                verifyAuthorizationStateWaitCode();
-            }
-            case TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> {
-                AuthorizationStateCache.passwordInputToCheck = twoStepPassword;
-                updateAuthorizationNotification.handleNotification(updateAuthorizationState);
-                verifyAuthorizationStateWaitPassword();
-            }
-            case TdApi.AuthorizationStateWaitEmailAddress.CONSTRUCTOR -> {
-                AuthorizationStateCache.emailAddressInputToCheck = email;
-                updateAuthorizationNotification.handleNotification(updateAuthorizationState);
-                verifyAuthorizationStateWaitEmailAddress();
-            }
-            case TdApi.AuthorizationStateWaitEmailCode.CONSTRUCTOR -> {
-                AuthorizationStateCache.codeInputToCheck = authCode;
-                updateAuthorizationNotification.handleNotification(updateAuthorizationState);
-                verifyAuthorizationStateWaitEmailCode();
-            }
-            case TdApi.AuthorizationStateReady.CONSTRUCTOR -> {
-                updateAuthorizationNotification.handleNotification(updateAuthorizationState);
-                verifyAuthorizationStateReady();
-            }
-            case TdApi.AuthorizationStateLoggingOut.CONSTRUCTOR, TdApi.AuthorizationStateClosing.CONSTRUCTOR -> {
-                updateAuthorizationNotification.handleNotification(updateAuthorizationState);
-                verifyAuthorizationStateLoggingOutOrClosing();
-            }
-            case TdApi.AuthorizationStateClosed.CONSTRUCTOR -> {
-                updateAuthorizationNotification.handleNotification(updateAuthorizationState);
-                verifyAuthorizationStateClosed();
-            }
-            default -> throw new RuntimeException("Unknown state");
-        }
+        ArgumentCaptor<TdApi.SetTdlibParameters> captor =
+                ArgumentCaptor.forClass(TdApi.SetTdlibParameters.class);
+
+        verify(telegramClient).sendWithCallback(
+                captor.capture(),
+                any()
+        );
+
+        TdApi.SetTdlibParameters request = captor.getValue();
+
+        assertThat(request.useTestDc).isFalse();
+        assertThat(request.databaseDirectory)
+                .isEqualTo("/tmp/tdlib/database");
+        assertThat(request.filesDirectory)
+                .isEqualTo("/tmp/tdlib/files");
+        assertThat(request.apiId).isEqualTo(123456);
+        assertThat(request.apiHash).isEqualTo("api-hash");
+        assertThat(request.systemLanguageCode).isEqualTo("ru");
+        assertThat(request.deviceModel).isEqualTo("test-device");
+        assertThat(request.systemVersion).isEqualTo("Linux");
+        assertThat(request.applicationVersion).isEqualTo("1.0.0");
     }
 
     @Test
-    void notificationType() {
-        assertEquals(TdApi.UpdateAuthorizationState.class, updateAuthorizationNotification.notificationType());
+    void shouldSendAuthenticationPhoneNumber() {
+        updateAuthorizationState.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateWaitPhoneNumber()
+                )
+        );
+
+        ArgumentCaptor<TdApi.SetAuthenticationPhoneNumber> captor =
+                ArgumentCaptor.forClass(
+                        TdApi.SetAuthenticationPhoneNumber.class
+                );
+
+        verify(telegramClient).sendWithCallback(
+                captor.capture(),
+                any()
+        );
+
+        TdApi.SetAuthenticationPhoneNumber request = captor.getValue();
+
+        assertThat(request.phoneNumber)
+                .isEqualTo("+79990000000");
     }
 
-    private void handleAuthorizationStateWaitTdlibParameters() {
-        ArgumentCaptor<TdApi.SetTdlibParameters> paramsCaptor = ArgumentCaptor.forClass(TdApi.SetTdlibParameters.class);
-        verify(telegramClient).sendWithCallback(paramsCaptor.capture(), any(ITdlibQueryResultHandler.class));
-        verify(telegramClient).sendWithCallback(any(TdApi.AddProxy.class), any(ITdlibQueryResultHandler.class));
-        TdApi.SetTdlibParameters tdlibParameters = paramsCaptor.getValue();
-        assertEquals(123, tdlibParameters.apiId);
+    @Test
+    void shouldWaitForAuthenticationCodeAndSendIt() {
+        updateAuthorizationState.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateWaitCode(
+                                new TdApi.AuthenticationCodeInfo()
+                        )
+                )
+        );
+
+        verifyNoInteractions(telegramClient);
+
+        assertThat(authorizationManager.isWaitAuthenticationCode())
+                .isTrue();
+
+        authorizationManager.checkAuthenticationCode("12345");
+
+        ArgumentCaptor<TdApi.CheckAuthenticationCode> captor =
+                ArgumentCaptor.forClass(
+                        TdApi.CheckAuthenticationCode.class
+                );
+
+        verify(telegramClient).sendWithCallback(
+                captor.capture(),
+                any()
+        );
+
+        assertThat(captor.getValue().code)
+                .isEqualTo("12345");
     }
 
-    private void handleAuthorizationStateWaitPhoneNumber() {
-        ArgumentCaptor<TdApi.SetAuthenticationPhoneNumber> captor = ArgumentCaptor.forClass(TdApi.SetAuthenticationPhoneNumber.class);
-        verify(telegramClient).sendWithCallback(captor.capture(), any(ITdlibQueryResultHandler.class));
-        assertEquals("123456789", captor.getValue().phoneNumber);
+    @Test
+    void shouldWaitForAuthenticationPasswordAndSendIt() {
+        updateAuthorizationState.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateWaitPassword()
+                )
+        );
+
+        verifyNoInteractions(telegramClient);
+
+        assertThat(authorizationManager.isWaitAuthenticationPassword())
+                .isTrue();
+
+        authorizationManager.checkAuthenticationPassword("password");
+
+        ArgumentCaptor<TdApi.CheckAuthenticationPassword> captor =
+                ArgumentCaptor.forClass(
+                        TdApi.CheckAuthenticationPassword.class
+                );
+
+        verify(telegramClient).sendWithCallback(
+                captor.capture(),
+                any()
+        );
+
+        assertThat(captor.getValue().password)
+                .isEqualTo("password");
     }
 
-    private void handleAuthorizationStateWaitOtherDeviceConfirmation() {
-        verifyTelegramClientNotInvoked();
+    @Test
+    void shouldWaitForEmailAddressAndSendIt() {
+        updateAuthorizationState.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateWaitEmailAddress()
+                )
+        );
+
+        verifyNoInteractions(telegramClient);
+
+        assertThat(authorizationManager.isWaitEmailAddress())
+                .isTrue();
+
+        authorizationManager.checkEmailAddress("user@example.com");
+
+        ArgumentCaptor<TdApi.SetAuthenticationEmailAddress> captor =
+                ArgumentCaptor.forClass(
+                        TdApi.SetAuthenticationEmailAddress.class
+                );
+
+        verify(telegramClient).sendWithCallback(
+                captor.capture(),
+                any()
+        );
+
+        assertThat(captor.getValue().emailAddress)
+                .isEqualTo("user@example.com");
     }
 
-    private void verifyTelegramClientNotInvoked() {
-        verify(telegramClient, never()).sendWithCallback(any(TdApi.Function.class), any(ITdlibQueryResultHandler.class));
-        verify(telegramClient, never()).send(any(TdApi.Function.class));
-        verify(telegramClient, never()).send(any(TdApi.Function.class));
-        verify(telegramClient, never()).sendAsync(any(TdApi.Function.class));
-        verify(telegramClient, never()).sendAsync(any(TdApi.Function.class));
+    @Test
+    void shouldWaitForEmailAuthenticationCodeAndSendIt() {
+        updateAuthorizationState.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateWaitEmailCode()));
+
+        assertThat(authorizationManager.isWaitAuthenticationCode())
+                .isTrue();
+
+        authorizationManager.checkAuthenticationCode("67890");
+
+        var requestCaptor =
+                ArgumentCaptor.forClass(
+                        TdApi.CheckAuthenticationEmailCode.class);
+
+        verify(telegramClient).sendWithCallback(
+                requestCaptor.capture(),
+                any());
+
+        var request = requestCaptor.getValue();
+
+        assertThat(request).isNotNull();
+
+        if (request == null) {
+            throw new AssertionError(
+                    "CheckAuthenticationEmailCode request was not sent");
+        }
+
+        if (!(request.code
+                instanceof TdApi.EmailAddressAuthenticationCode authenticationCode)) {
+
+            throw new AssertionError(
+                    "Expected EmailAddressAuthenticationCode, but got: "
+                            + (request.code == null
+                            ? "null"
+                            : request.code.getClass().getName()));
+        }
+
+        assertThat(authenticationCode.code)
+                .isEqualTo("67890");
     }
 
-    private void verifyAuthorizationStateWaitCode() {
-        var authCodeCaptor = ArgumentCaptor.forClass(TdApi.CheckAuthenticationCode.class);
-        verify(telegramClient).sendWithCallback(authCodeCaptor.capture(), any(ITdlibQueryResultHandler.class));
-        assertEquals(authCode, authCodeCaptor.getValue().code);
-        assertNull(AuthorizationStateCache.codeInputToCheck); // drop from cache after check
+    @Test
+    void shouldMarkAuthorizationAsCompletedWhenReady() {
+        updateAuthorizationState.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateReady()
+                )
+        );
+
+        assertThat(authorizationManager.haveAuthorization())
+                .isTrue();
+
+        verifyNoInteractions(telegramClient);
     }
 
-    private void verifyAuthorizationStateWaitPassword() {
-        var passwordCaptor = ArgumentCaptor.forClass(TdApi.CheckAuthenticationPassword.class);
-        verify(telegramClient).sendWithCallback(passwordCaptor.capture(), any(ITdlibQueryResultHandler.class));
-        assertEquals(twoStepPassword, passwordCaptor.getValue().password);
-        assertNull(AuthorizationStateCache.passwordInputToCheck); // drop from cache after check
+    @Test
+    void shouldResetAuthorizationWhenLoggingOut() {
+        authorizationManager.setAuthorized(true);
+
+        updateAuthorizationState.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateLoggingOut()
+                )
+        );
+
+        assertThat(authorizationManager.haveAuthorization())
+                .isFalse();
+
+        verifyNoInteractions(telegramClient);
     }
 
-    private void verifyAuthorizationStateWaitEmailAddress() {
-        var emailAddressCaptor = ArgumentCaptor.forClass(TdApi.SetAuthenticationEmailAddress.class);
-        verify(telegramClient).sendWithCallback(emailAddressCaptor.capture(), any(ITdlibQueryResultHandler.class));
-        assertEquals(email, emailAddressCaptor.getValue().emailAddress);
-        assertNull(AuthorizationStateCache.emailAddressInputToCheck); // drop from cache after check
+    @Test
+    void shouldResetAuthorizationWhenClosing() {
+        authorizationManager.setAuthorized(true);
+
+        updateAuthorizationState.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateClosing()
+                )
+        );
+
+        assertThat(authorizationManager.haveAuthorization())
+                .isFalse();
+
+        assertThat(authorizationManager.isStateClosed())
+                .isFalse();
+
+        verifyNoInteractions(telegramClient);
     }
 
-    private void verifyAuthorizationStateWaitEmailCode() {
-        var codeFromEmailCaptor = ArgumentCaptor.forClass(TdApi.CheckAuthenticationEmailCode.class);
-        verify(telegramClient).sendWithCallback(codeFromEmailCaptor.capture(), any(ITdlibQueryResultHandler.class));
-        TdApi.EmailAddressAuthenticationCode emailCode = (TdApi.EmailAddressAuthenticationCode) codeFromEmailCaptor.getValue().code;
-        assertEquals(authCode, emailCode.code);
-        assertNull(AuthorizationStateCache.codeInputToCheck); // drop from cache after check
+    @Test
+    void shouldCloseAuthorizationManagerWhenClosed() {
+        authorizationManager.setAuthorized(true);
+
+        updateAuthorizationState.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateClosed()
+                )
+        );
+
+        assertThat(authorizationManager.haveAuthorization())
+                .isFalse();
+
+        assertThat(authorizationManager.isStateClosed())
+                .isTrue();
+
+        verifyNoInteractions(telegramClient);
     }
 
-    private void verifyAuthorizationStateReady() {
-        assertTrue(AuthorizationStateCache.haveAuthorization.get());
+    @Test
+    void shouldIgnoreNullNotification() {
+        updateAuthorizationState.handleNotification(null);
+
+        verifyNoInteractions(telegramClient);
+
+        assertThat(authorizationManager.haveAuthorization())
+                .isFalse();
+        assertThat(authorizationManager.isStateClosed())
+                .isFalse();
     }
 
-    private void verifyAuthorizationStateLoggingOutOrClosing() {
-        assertFalse(AuthorizationStateCache.haveAuthorization.get());
+    @Test
+    void shouldLogOtherDeviceConfirmationWithoutSendingRequest() {
+        updateAuthorizationState.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateWaitOtherDeviceConfirmation(
+                                "https://t.me/confirm"
+                        )
+                )
+        );
+
+        verifyNoInteractions(telegramClient);
+
+        assertThat(authorizationManager.haveAuthorization())
+                .isFalse();
     }
 
-    private void verifyAuthorizationStateClosed() {
-        verifyTelegramClientNotInvoked();
-        assertTrue(AuthorizationStateCache.stateClosed.get());
+    @Test
+    void shouldConfigureMtProtoProxy() {
+        TelegramProperties.Proxy proxy =
+                new TelegramProperties.Proxy(
+                        "proxy.example.com",
+                        443,
+                        null,
+                        null,
+                        new TelegramProperties.Proxy.ProxyMtProto(
+                                "secret"
+                        )
+                );
+
+        TelegramProperties proxyProperties = new TelegramProperties(
+                false,
+                "/tmp/tdlib/database",
+                "/tmp/tdlib/files",
+                "encryption-key",
+                true,
+                true,
+                true,
+                false,
+                123456,
+                "api-hash",
+                "+79990000000",
+                "ru",
+                "test-device",
+                "Linux",
+                "1.0.0",
+                0,
+                proxy
+        );
+
+        UpdateAuthorizationState handler =
+                new UpdateAuthorizationState(
+                        proxyProperties,
+                        telegramClient,
+                        authorizationManager
+                );
+
+        handler.handleNotification(
+                new TdApi.UpdateAuthorizationState(
+                        new TdApi.AuthorizationStateWaitTdlibParameters()
+                )
+        );
+
+        verify(telegramClient, times(2))
+                .sendWithCallback(any(), any());
+
+        ArgumentCaptor<TdApi.AddProxy> proxyCaptor =
+                ArgumentCaptor.forClass(TdApi.AddProxy.class);
+
+        verify(telegramClient).sendWithCallback(
+                proxyCaptor.capture(),
+                any()
+        );
+
+        TdApi.AddProxy request = proxyCaptor.getValue();
+
+        assertThat(request.proxy.server)
+                .isEqualTo("proxy.example.com");
+        assertThat(request.proxy.port)
+                .isEqualTo(443);
+        assertThat(request.proxy.type)
+                .isInstanceOf(TdApi.ProxyTypeMtproto.class);
     }
 }

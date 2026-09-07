@@ -11,7 +11,7 @@ import java.util.function.Consumer;
  * @param <T> listener type
  * @author Pavel Grushin
  */
-final class UpdateNotificationConsumer<T extends TdApi.Update> implements Consumer<TdApi.Object> {
+public final class UpdateNotificationConsumer<T extends TdApi.Update> implements Consumer<TdApi.Object> {
 
     private final ITdlibUpdateListener<T> notificationListener;
 
