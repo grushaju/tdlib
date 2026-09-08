@@ -31,7 +31,7 @@ public class TelegramClient {
 
     private final Client client;
 
-    private final TelegramAuthorizationManager telegramAuthorizationManager;
+    private final TelegramAuthorizationManager authorizationManager;
 
     private final TdlibUpdateDispatcher updateDispatcher;
 
@@ -45,14 +45,14 @@ public class TelegramClient {
     /**
      * @param properties TDlib client properties
      * @param updateDispatcher registered update dispatcher
-     * @param ITelegramAuthorizationManager authorization state of the client
+     * @param authorizationManager authorization state of the client
      */
     TelegramClient(TelegramProperties properties,
                           TdlibUpdateDispatcher updateDispatcher,
-                          TelegramAuthorizationManager ITelegramAuthorizationManager,
+                          TelegramAuthorizationManager authorizationManager,
                           Client client) {
         this.updateDispatcher = updateDispatcher;
-        this.telegramAuthorizationManager = ITelegramAuthorizationManager;
+        this.authorizationManager = authorizationManager;
         checkProperties(properties);
         this.client = client != null
                 ? client
@@ -60,7 +60,7 @@ public class TelegramClient {
     }
 
     private void checkProperties(TelegramProperties properties) {
-        if (properties.phone() == null) {
+        if (!hasText(properties.phone())) {
             throw new TdlibConfigurationException("The phone number of the user not filled. " +
                     "Specify property spring.telegram.client.phone");
         }
@@ -161,7 +161,7 @@ public class TelegramClient {
     @PreDestroy
     void cleanUp() {
 
-        if (!telegramAuthorizationManager.isStateClosed()) {
+        if (!authorizationManager.isStateClosed()) {
             var close = new TdApi.Close();
 
             try {
@@ -171,7 +171,7 @@ public class TelegramClient {
                     }
                 });
 
-                telegramAuthorizationManager
+                authorizationManager
                         .closedFuture()
                         .get(30, TimeUnit.SECONDS);
 
