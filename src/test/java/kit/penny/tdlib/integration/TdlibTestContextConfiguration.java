@@ -8,12 +8,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-final class TdlibTestContextConfiguration {
+public final class TdlibTestContextConfiguration {
 
     private TdlibTestContextConfiguration() {
     }
 
-    static AnnotationConfigApplicationContext create(
+    public static AnnotationConfigApplicationContext create(
             int apiId,
             String apiHash,
             String phone,

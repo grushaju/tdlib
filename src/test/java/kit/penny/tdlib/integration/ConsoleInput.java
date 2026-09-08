@@ -4,19 +4,19 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-final class ConsoleInput {
+public final class ConsoleInput {
 
     private final java.io.Console console;
     private final BufferedReader reader;
 
-    ConsoleInput() {
+    public ConsoleInput() {
         this.console = System.console();
         this.reader = console == null
                 ? new BufferedReader(new InputStreamReader(System.in))
                 : null;
     }
 
-    String readLine(String prompt) {
+    public String readLine(String prompt) {
         try {
             if (console != null) {
                 String value = console.readLine("%s", prompt);
@@ -41,7 +41,7 @@ final class ConsoleInput {
         }
     }
 
-    String readSecret(String prompt) {
+    public String readSecret(String prompt) {
         try {
             if (console != null) {
                 char[] value = console.readPassword("%s: ", prompt);

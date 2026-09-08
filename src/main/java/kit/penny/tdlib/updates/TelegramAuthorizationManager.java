@@ -1,5 +1,7 @@
 package kit.penny.tdlib.updates;
 
+import org.drinkless.tdlib.TdApi;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -14,7 +16,8 @@ import static org.springframework.util.StringUtils.hasText;
  *
  * @author Pavel Grushin
  */
-public final class TelegramAuthorizationManager implements ITelegramAuthorizationManager {
+public final class TelegramAuthorizationManager
+        implements ITelegramAuthorizationManager {
 
     private final AtomicReference<CompletableFuture<String>> authenticationCode =
             new AtomicReference<>();
@@ -25,6 +28,9 @@ public final class TelegramAuthorizationManager implements ITelegramAuthorizatio
     private final AtomicReference<CompletableFuture<String>> emailAddress =
             new AtomicReference<>();
 
+    private final AtomicReference<CompletableFuture<TdApi.Error>> authenticationError =
+            new AtomicReference<>();
+
     private final AtomicBoolean waitAuthenticationCode = new AtomicBoolean();
     private final AtomicBoolean waitAuthenticationPassword = new AtomicBoolean();
     private final AtomicBoolean waitEmailAddress = new AtomicBoolean();
@@ -32,7 +38,8 @@ public final class TelegramAuthorizationManager implements ITelegramAuthorizatio
     private final AtomicBoolean authorized = new AtomicBoolean();
     private final AtomicBoolean stateClosed = new AtomicBoolean();
 
-    private final CompletableFuture<Void> closedFuture = new CompletableFuture<>();
+    private final CompletableFuture<Void> closedFuture =
+            new CompletableFuture<>();
 
     @Override
     public synchronized void checkAuthenticationCode(String code) {
@@ -83,6 +90,17 @@ public final class TelegramAuthorizationManager implements ITelegramAuthorizatio
         return await(authenticationCode, waitAuthenticationCode);
     }
 
+    synchronized void retryAuthenticationCode() {
+        CompletableFuture<String> current =
+                authenticationCode.get();
+
+        if (current == null || current.isDone()) {
+            authenticationCode.set(new CompletableFuture<>());
+        }
+
+        waitAuthenticationCode.set(true);
+    }
+
     /**
      * Starts waiting for an authentication password.
      *
@@ -92,6 +110,17 @@ public final class TelegramAuthorizationManager implements ITelegramAuthorizatio
         return await(authenticationPassword, waitAuthenticationPassword);
     }
 
+    synchronized void retryAuthenticationPassword() {
+        CompletableFuture<String> current =
+                authenticationPassword.get();
+
+        if (current == null || current.isDone()) {
+            authenticationPassword.set(new CompletableFuture<>());
+        }
+
+        waitAuthenticationPassword.set(true);
+    }
+
     /**
      * Starts waiting for an email address.
      *
@@ -99,6 +128,41 @@ public final class TelegramAuthorizationManager implements ITelegramAuthorizatio
      */
     synchronized CompletableFuture<String> awaitEmailAddress() {
         return await(emailAddress, waitEmailAddress);
+    }
+
+    /**
+     * Starts waiting for an authorization request error.
+     *
+     * @return future completed when TDLib returns an authorization error
+     */
+    synchronized CompletableFuture<TdApi.Error> awaitAuthenticationError() {
+        CompletableFuture<TdApi.Error> current =
+                authenticationError.get();
+
+        if (current == null || current.isDone()) {
+            current = new CompletableFuture<>();
+            authenticationError.set(current);
+        }
+
+        return current;
+    }
+
+    /**
+     * Completes the current authorization error future.
+     *
+     * @param error TDLib authorization error
+     */
+    synchronized void failAuthentication(TdApi.Error error) {
+        if (error == null) {
+            return;
+        }
+
+        CompletableFuture<TdApi.Error> future =
+                authenticationError.get();
+
+        if (future != null && !future.isDone()) {
+            future.complete(error);
+        }
     }
 
     void setAuthorized(boolean value) {
@@ -120,9 +184,25 @@ public final class TelegramAuthorizationManager implements ITelegramAuthorizatio
         stateClosed.set(true);
         authorized.set(false);
 
-        completeExceptionally(authenticationCode, "TDLib authorization state is closed");
-        completeExceptionally(authenticationPassword, "TDLib authorization state is closed");
-        completeExceptionally(emailAddress, "TDLib authorization state is closed");
+        completeExceptionally(
+                authenticationCode,
+                "TDLib authorization state is closed"
+        );
+
+        completeExceptionally(
+                authenticationPassword,
+                "TDLib authorization state is closed"
+        );
+
+        completeExceptionally(
+                emailAddress,
+                "TDLib authorization state is closed"
+        );
+
+        completeExceptionally(
+                authenticationError,
+                "TDLib authorization state is closed"
+        );
 
         waitAuthenticationCode.set(false);
         waitAuthenticationPassword.set(false);
@@ -164,14 +244,16 @@ public final class TelegramAuthorizationManager implements ITelegramAuthorizatio
         }
     }
 
-    private void completeExceptionally(
-            AtomicReference<CompletableFuture<String>> input,
+    private <T> void completeExceptionally(
+            AtomicReference<CompletableFuture<T>> input,
             String message) {
 
-        CompletableFuture<String> future = input.get();
+        CompletableFuture<T> future = input.get();
 
         if (future != null && !future.isDone()) {
-            future.completeExceptionally(new IllegalStateException(message));
+            future.completeExceptionally(
+                    new IllegalStateException(message)
+            );
         }
     }
 

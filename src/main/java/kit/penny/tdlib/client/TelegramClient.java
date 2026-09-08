@@ -160,31 +160,39 @@ public class TelegramClient {
      */
     @PreDestroy
     void cleanUp() {
-        var close = new TdApi.Close();
 
-        try {
-            sendWithCallback(close, (result, error) -> {
-                if (error != null) {
-                    logError(close, error);
-                }
-            });
+        if (!telegramAuthorizationManager.isStateClosed()) {
+            var close = new TdApi.Close();
 
-            telegramAuthorizationManager
-                    .closedFuture()
-                    .get(30, TimeUnit.SECONDS);
+            try {
+                sendWithCallback(close, (result, error) -> {
+                    if (error != null) {
+                        logError(close, error);
+                    }
+                });
 
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.warn("TDLib client shutdown was interrupted.", e);
+                telegramAuthorizationManager
+                        .closedFuture()
+                        .get(30, TimeUnit.SECONDS);
 
-        } catch (TimeoutException e) {
-            log.warn("TDLib client did not reach CLOSED state within 30 seconds.", e);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("TDLib client shutdown was interrupted.", e);
 
-        } catch (ExecutionException e) {
-            log.warn("TDLib client shutdown failed.", e);
+            } catch (TimeoutException e) {
+                log.warn(
+                        "TDLib client did not reach CLOSED state within 30 seconds.",
+                        e
+                );
 
-        } catch (RuntimeException e) {
-            log.warn("Failed to send TDLib Close request.", e);
+            } catch (ExecutionException e) {
+                log.warn("TDLib client shutdown failed.", e);
+
+            } catch (RuntimeException e) {
+                log.warn("Failed to send TDLib Close request.", e);
+            }
+        } else {
+            log.info("TDLib client is already closed.");
         }
 
         log.info("Goodbye!");

@@ -416,10 +416,33 @@ public final class UpdateAuthorizationState
 
         @Override
         public void onResult(TdApi.Ok obj, TdApi.Error error) {
-            if (error != null) {
-                log.error(
-                        "TDLib authorization request failed:\n{}",
-                        error);
+            if (error == null) {
+                return;
+            }
+
+            authorizationManager.failAuthentication(error);
+
+            log.error(
+                    "TDLib authorization request failed:\n{}",
+                    error
+            );
+
+            if ("PHONE_CODE_INVALID".equals(error.message)) {
+                authorizationManager.retryAuthenticationCode();
+                waitForAuthenticationCode();
+                log.warn(
+                        "Telegram authentication code is invalid. "
+                                + "Waiting for a new authentication code."
+                );
+            }
+            if ("PASSWORD_HASH_INVALID".equals(error.message)) {
+                authorizationManager.retryAuthenticationPassword();
+                waitForAuthenticationPassword();
+
+                log.warn(
+                        "Telegram 2FA password is invalid. "
+                                + "Waiting for a new password."
+                );
             }
         }
     }
