@@ -33,6 +33,11 @@ public sealed interface ITelegramAuthorizationManager permits TelegramAuthorizat
     void checkEmailAddress(String email);
 
     /**
+     * @return current authorization status
+     */
+    TelegramAuthorizationStatus getStatus();
+
+    /**
      * @return authentication sate awaiting authentication code
      */
     boolean isWaitAuthenticationCode();

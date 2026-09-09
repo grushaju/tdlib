@@ -19,6 +19,9 @@ import static org.springframework.util.StringUtils.hasText;
 public final class TelegramAuthorizationManager
         implements ITelegramAuthorizationManager {
 
+    private final AtomicReference<TelegramAuthorizationStatus> status =
+            new AtomicReference<>(TelegramAuthorizationStatus.WAIT_PHONE_NUMBER);
+
     private final AtomicReference<CompletableFuture<String>> authenticationCode =
             new AtomicReference<>();
 
@@ -31,29 +34,43 @@ public final class TelegramAuthorizationManager
     private final AtomicReference<CompletableFuture<TdApi.Error>> authenticationError =
             new AtomicReference<>();
 
-    private final AtomicBoolean waitAuthenticationCode = new AtomicBoolean();
-    private final AtomicBoolean waitAuthenticationPassword = new AtomicBoolean();
-    private final AtomicBoolean waitEmailAddress = new AtomicBoolean();
+    private final AtomicBoolean waitAuthenticationCode =
+            new AtomicBoolean();
 
-    private final AtomicBoolean authorized = new AtomicBoolean();
-    private final AtomicBoolean stateClosed = new AtomicBoolean();
+    private final AtomicBoolean waitAuthenticationPassword =
+            new AtomicBoolean();
+
+    private final AtomicBoolean waitEmailAddress =
+            new AtomicBoolean();
 
     private final CompletableFuture<Void> closedFuture =
             new CompletableFuture<>();
 
     @Override
     public synchronized void checkAuthenticationCode(String code) {
-        complete(authenticationCode, waitAuthenticationCode, code);
+        complete(
+                authenticationCode,
+                waitAuthenticationCode,
+                code
+        );
     }
 
     @Override
     public synchronized void checkAuthenticationPassword(String password) {
-        complete(authenticationPassword, waitAuthenticationPassword, password);
+        complete(
+                authenticationPassword,
+                waitAuthenticationPassword,
+                password
+        );
     }
 
     @Override
     public synchronized void checkEmailAddress(String email) {
-        complete(emailAddress, waitEmailAddress, email);
+        complete(
+                emailAddress,
+                waitEmailAddress,
+                email
+        );
     }
 
     @Override
@@ -72,22 +89,33 @@ public final class TelegramAuthorizationManager
     }
 
     @Override
+    public TelegramAuthorizationStatus getStatus() {
+        return status.get();
+    }
+
+    @Override
     public boolean haveAuthorization() {
-        return authorized.get();
+        return status.get() == TelegramAuthorizationStatus.READY;
     }
 
     @Override
     public boolean isStateClosed() {
-        return stateClosed.get();
+        return status.get() == TelegramAuthorizationStatus.CLOSED;
     }
 
     /**
      * Starts waiting for an authentication code.
      *
+     * <p>The status is intentionally not changed here because this same
+     * internal mechanism is used both for WaitCode and WaitEmailCode.</p>
+     *
      * @return future completed when authentication code is supplied
      */
     synchronized CompletableFuture<String> awaitAuthenticationCode() {
-        return await(authenticationCode, waitAuthenticationCode);
+        return await(
+                authenticationCode,
+                waitAuthenticationCode
+        );
     }
 
     synchronized void retryAuthenticationCode() {
@@ -99,6 +127,7 @@ public final class TelegramAuthorizationManager
         }
 
         waitAuthenticationCode.set(true);
+        status.set(TelegramAuthorizationStatus.WAIT_CODE);
     }
 
     /**
@@ -107,7 +136,10 @@ public final class TelegramAuthorizationManager
      * @return future completed when password is supplied
      */
     synchronized CompletableFuture<String> awaitAuthenticationPassword() {
-        return await(authenticationPassword, waitAuthenticationPassword);
+        return await(
+                authenticationPassword,
+                waitAuthenticationPassword
+        );
     }
 
     synchronized void retryAuthenticationPassword() {
@@ -119,6 +151,7 @@ public final class TelegramAuthorizationManager
         }
 
         waitAuthenticationPassword.set(true);
+        status.set(TelegramAuthorizationStatus.WAIT_PASSWORD);
     }
 
     /**
@@ -127,7 +160,10 @@ public final class TelegramAuthorizationManager
      * @return future completed when email address is supplied
      */
     synchronized CompletableFuture<String> awaitEmailAddress() {
-        return await(emailAddress, waitEmailAddress);
+        return await(
+                emailAddress,
+                waitEmailAddress
+        );
     }
 
     /**
@@ -157,6 +193,8 @@ public final class TelegramAuthorizationManager
             return;
         }
 
+        status.set(TelegramAuthorizationStatus.ERROR);
+
         CompletableFuture<TdApi.Error> future =
                 authenticationError.get();
 
@@ -166,24 +204,41 @@ public final class TelegramAuthorizationManager
     }
 
     void setAuthorized(boolean value) {
-        authorized.set(value);
+        if (value) {
+            status.set(TelegramAuthorizationStatus.READY);
+        } else {
+            resetAuthorization();
+        }
     }
 
     void resetAuthorization() {
-        authorized.set(false);
+        if (!isStateClosed()) {
+            status.set(TelegramAuthorizationStatus.WAIT_PHONE_NUMBER);
+        }
+
+        waitAuthenticationCode.set(false);
+        waitAuthenticationPassword.set(false);
+        waitEmailAddress.set(false);
+    }
+
+    void setStatus(TelegramAuthorizationStatus status) {
+        if (status == null) {
+            return;
+        }
+
+        this.status.set(status);
     }
 
     void setStateClosed(boolean value) {
-        stateClosed.set(value);
+        if (value) {
+            status.set(TelegramAuthorizationStatus.CLOSED);
+        }
     }
 
     /**
      * Completes all pending authentication requests when TDLib reaches its final state.
      */
     synchronized void close() {
-        stateClosed.set(true);
-        authorized.set(false);
-
         completeExceptionally(
                 authenticationCode,
                 "TDLib authorization state is closed"
@@ -208,6 +263,8 @@ public final class TelegramAuthorizationManager
         waitAuthenticationPassword.set(false);
         waitEmailAddress.set(false);
 
+        status.set(TelegramAuthorizationStatus.CLOSED);
+
         closedFuture.complete(null);
     }
 
@@ -215,7 +272,8 @@ public final class TelegramAuthorizationManager
             AtomicReference<CompletableFuture<String>> input,
             AtomicBoolean waiting) {
 
-        CompletableFuture<String> current = input.get();
+        CompletableFuture<String> current =
+                input.get();
 
         if (current == null || current.isDone()) {
             current = new CompletableFuture<>();
@@ -236,7 +294,8 @@ public final class TelegramAuthorizationManager
             return;
         }
 
-        CompletableFuture<String> future = input.get();
+        CompletableFuture<String> future =
+                input.get();
 
         if (future != null && !future.isDone()) {
             waiting.set(false);
@@ -248,7 +307,8 @@ public final class TelegramAuthorizationManager
             AtomicReference<CompletableFuture<T>> input,
             String message) {
 
-        CompletableFuture<T> future = input.get();
+        CompletableFuture<T> future =
+                input.get();
 
         if (future != null && !future.isDone()) {
             future.completeExceptionally(

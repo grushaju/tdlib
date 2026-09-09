@@ -68,30 +68,56 @@ public final class UpdateAuthorizationState
         }
 
         switch (this.authorizationState.getConstructor()) {
+            case TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR -> {
+                authorizationManager.setStatus(
+                        TelegramAuthorizationStatus.WAIT_PHONE_NUMBER
+                );
+                sendAuthenticationPhoneNumber();
+            }
+
+            case TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> {
+                authorizationManager.setStatus(
+                        TelegramAuthorizationStatus.WAIT_CODE
+                );
+                waitForAuthenticationCode();
+            }
+
+            case TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> {
+                authorizationManager.setStatus(
+                        TelegramAuthorizationStatus.WAIT_PASSWORD
+                );
+                waitForAuthenticationPassword();
+            }
+
+            case TdApi.AuthorizationStateWaitEmailAddress.CONSTRUCTOR -> {
+                authorizationManager.setStatus(
+                        TelegramAuthorizationStatus.WAIT_EMAIL
+                );
+                waitForEmailAddress();
+            }
+
+            case TdApi.AuthorizationStateWaitEmailCode.CONSTRUCTOR -> {
+                authorizationManager.setStatus(
+                        TelegramAuthorizationStatus.WAIT_EMAIL
+                );
+                waitForAuthenticationEmailCode();
+            }
+
+            case TdApi.AuthorizationStateReady.CONSTRUCTOR -> {
+                authorizationManager.setStatus(
+                        TelegramAuthorizationStatus.READY
+                );
+                handleReady();
+            }
+
+            case TdApi.AuthorizationStateClosed.CONSTRUCTOR ->
+                    closeState();
 
             case TdApi.AuthorizationStateWaitTdlibParameters.CONSTRUCTOR ->
                     setTdlibParameters();
 
-            case TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR ->
-                    sendAuthenticationPhoneNumber();
-
             case TdApi.AuthorizationStateWaitOtherDeviceConfirmation.CONSTRUCTOR ->
                     logOtherDeviceConfirmationLink();
-
-            case TdApi.AuthorizationStateWaitCode.CONSTRUCTOR ->
-                    waitForAuthenticationCode();
-
-            case TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR ->
-                    waitForAuthenticationPassword();
-
-            case TdApi.AuthorizationStateWaitEmailAddress.CONSTRUCTOR ->
-                    waitForEmailAddress();
-
-            case TdApi.AuthorizationStateWaitEmailCode.CONSTRUCTOR ->
-                    waitForAuthenticationEmailCode();
-
-            case TdApi.AuthorizationStateReady.CONSTRUCTOR ->
-                    handleReady();
 
             case TdApi.AuthorizationStateLoggingOut.CONSTRUCTOR ->
                     resetAuthorization("Logging out");
@@ -99,13 +125,11 @@ public final class UpdateAuthorizationState
             case TdApi.AuthorizationStateClosing.CONSTRUCTOR ->
                     resetAuthorization("Closing");
 
-            case TdApi.AuthorizationStateClosed.CONSTRUCTOR ->
-                    closeState();
-
             default ->
                     log.error(
                             "Unsupported authorization state:\n{}",
-                            this.authorizationState);
+                            this.authorizationState
+                    );
         }
     }
 
