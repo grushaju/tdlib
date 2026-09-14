@@ -302,4 +302,66 @@ public class TelegramClient {
         });
     }
 
+    /**
+     * Logs out the current Telegram user and waits until TDLib
+     * reaches authorizationStateClosed.
+     *
+     * <p>Unlike {@link #cleanUp()}, this performs a real Telegram logout.
+     * TDLib destroys its local authorization data as part of the logout.</p>
+     */
+    public void logout() {
+
+        if (authorizationManager.isStateClosed()) {
+            log.info("TDLib client is already closed.");
+            return;
+        }
+
+        var logOut = new TdApi.LogOut();
+
+        try {
+            sendWithCallback(logOut, (result, error) -> {
+                if (error != null) {
+                    logError(logOut, error);
+                }
+            });
+
+            authorizationManager
+                    .closedFuture()
+                    .get(30, TimeUnit.SECONDS);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+
+            throw new TdlibException(
+                    "TDLib logout was interrupted.",
+                    e
+            );
+
+        } catch (TimeoutException e) {
+
+            throw new TdlibException(
+                    "TDLib client did not reach CLOSED state after logout within 30 seconds.",
+                    e
+            );
+
+        } catch (ExecutionException e) {
+
+            if (e.getCause() instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+
+            throw new TdlibException(
+                    "TDLib logout failed.",
+                    e.getCause()
+            );
+
+        } catch (RuntimeException e) {
+
+            throw new TdlibException(
+                    "Failed to send TDLib logout request.",
+                    e
+            );
+        }
+    }
+
 }
